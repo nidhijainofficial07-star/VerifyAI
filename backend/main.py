@@ -1,14 +1,17 @@
+
 import os
 import json
 from datetime import datetime, timezone
 from typing import Literal
-from fastapi import HTTPException
-from database import get_connection, create_tables
-from fastapi import FastAPI
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from database import get_connection, create_tables
 from brand import get_brand_profile
 from rules import analyze_content
+
 
 app = FastAPI(
     title="VerityAI API",
@@ -18,6 +21,8 @@ app = FastAPI(
 
 create_tables()
 
+
+# CORS configuration
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
 allowed_origins = [
@@ -35,20 +40,18 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
 
 class ContentRequest(BaseModel):
     content: str
 
+
 class ReviewRequest(BaseModel):
-    review_status: Literal[
-        "approved",
-        "rejected",
-        "request_changes"
-    ]
+    review_status: Literal["approved", "rejected", "request_changes"]
     reviewer_comment: str = ""
+
 
 @app.get("/")
 def home():
@@ -64,6 +67,8 @@ def health_check():
         "status": "healthy",
         "service": "VerityAI Backend"
     }
+
+
 @app.get("/brand")
 def get_brand():
     return get_brand_profile()
@@ -71,33 +76,28 @@ def get_brand():
 
 @app.post("/analyze")
 def analyze(request: ContentRequest):
-
     result = analyze_content(request.content)
-
     created_at = datetime.now(timezone.utc).isoformat()
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO reports (
+                    brand,
+                    content,
+                    result_json,
+                    created_at
+                )
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (
+                result["brand"],
+                request.content,
+                json.dumps(result),
+                created_at
+            ))
 
-    cursor.execute("""
-        INSERT INTO reports (
-            brand,
-            content,
-            result_json,
-            created_at
-        )
-        VALUES (?, ?, ?, ?)
-    """, (
-        result["brand"],
-        request.content,
-        json.dumps(result),
-        created_at
-    ))
-
-    report_id = cursor.lastrowid
-
-    connection.commit()
-    connection.close()
+            report_id = cursor.fetchone()["id"]
 
     return {
         "report_id": report_id,
@@ -108,18 +108,15 @@ def analyze(request: ContentRequest):
 
 @app.get("/reports")
 def get_reports():
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT *
+                FROM reports
+                ORDER BY id DESC
+            """)
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        SELECT *
-        FROM reports
-        ORDER BY id DESC
-    """)
-
-    rows = cursor.fetchall()
-    connection.close()
+            rows = cursor.fetchall()
 
     reports = []
 
@@ -142,37 +139,31 @@ def get_reports():
 
 @app.post("/reports/{report_id}/review")
 def review_report(report_id: int, request: ReviewRequest):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM reports WHERE id = %s",
+                (report_id,)
+            )
 
-    connection = get_connection()
-    cursor = connection.cursor()
+            report = cursor.fetchone()
 
-    cursor.execute(
-        "SELECT id FROM reports WHERE id = ?",
-        (report_id,)
-    )
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found"
+                )
 
-    report = cursor.fetchone()
-
-    if report is None:
-        connection.close()
-        raise HTTPException(
-            status_code=404,
-            detail="Report not found"
-        )
-
-    cursor.execute("""
-        UPDATE reports
-        SET review_status = ?,
-            reviewer_comment = ?
-        WHERE id = ?
-    """, (
-        request.review_status,
-        request.reviewer_comment,
-        report_id
-    ))
-
-    connection.commit()
-    connection.close()
+            cursor.execute("""
+                UPDATE reports
+                SET review_status = %s,
+                    reviewer_comment = %s
+                WHERE id = %s
+            """, (
+                request.review_status,
+                request.reviewer_comment,
+                report_id
+            ))
 
     return {
         "message": "Review decision saved successfully",
