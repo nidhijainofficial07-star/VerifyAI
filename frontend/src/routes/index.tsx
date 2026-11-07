@@ -3,7 +3,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   createReviewerViaApi,
   getAdminStatsViaApi,
+  getReviewersViaApi,
+  deleteReviewerViaApi,
   type AdminStats,
+  type Reviewer,
 } from "@/lib/api";
 
 import {
@@ -82,6 +85,12 @@ function AdminDashboard({ name }: { name: string }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [reviewers, setReviewers] = useState<Reviewer[]>([]);
+const [reviewersLoading, setReviewersLoading] = useState(true);
+const [reviewersError, setReviewersError] = useState("");
+const [removingReviewerId, setRemovingReviewerId] = useState<number | null>(null);
+const [reviewerSuccess, setReviewerSuccess] = useState("");
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState("");
@@ -102,35 +111,81 @@ function AdminDashboard({ name }: { name: string }) {
     }
   }
 
-  useEffect(() => {
-    void loadStats();
-  }, []);
+  async function loadReviewers() {
+  setReviewersLoading(true);
+  setReviewersError("");
 
-  async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
-
-    try {
-      await createReviewerViaApi(reviewerName, email, password);
-
-      setSuccess(`Reviewer account created successfully for ${email}.`);
-      setReviewerName("");
-      setEmail("");
-      setPassword("");
-
-      await loadStats();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to create reviewer account."
-      );
-    } finally {
-      setLoading(false);
-    }
+  try {
+    const data = await getReviewersViaApi();
+    setReviewers(data);
+  } catch (err) {
+    setReviewersError(
+      err instanceof Error ? err.message : "Could not load reviewers."
+    );
+  } finally {
+    setReviewersLoading(false);
   }
+}
+
+  useEffect(() => {
+  void loadStats();
+  void loadReviewers();
+}, []);
+
+async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
+  setLoading(true);
+
+  try {
+    await createReviewerViaApi(reviewerName, email, password);
+
+    setSuccess(`Reviewer account created successfully for ${email}.`);
+    setReviewerName("");
+    setEmail("");
+    setPassword("");
+
+    await loadStats();
+    await loadReviewers();
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to create reviewer account."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+  async function handleDeleteReviewer(reviewer: Reviewer) {
+  const confirmed = window.confirm(
+    `Remove ${reviewer.name} (${reviewer.email})? They will no longer be able to log in. Their previous reviews will be preserved.`
+  );
+
+  if (!confirmed) return;
+
+  setRemovingReviewerId(reviewer.id);
+  setReviewersError("");
+  setReviewerSuccess("");
+
+  try {
+    await deleteReviewerViaApi(reviewer.id);
+
+    setReviewerSuccess(`${reviewer.name} has been removed successfully.`);
+
+    await loadReviewers();
+    await loadStats();
+    await loadReviewers();
+  } catch (err) {
+    setReviewersError(
+      err instanceof Error ? err.message : "Could not remove reviewer."
+    );
+  } finally {
+    setRemovingReviewerId(null);
+  }
+}
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -303,6 +358,65 @@ function AdminDashboard({ name }: { name: string }) {
               {loading ? "Creating..." : "Create Reviewer Account"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+            <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5" />
+            Manage Reviewers
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            View and manage active reviewer accounts.
+          </p>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {reviewersError && (
+            <p className="text-sm text-destructive">{reviewersError}</p>
+          )}
+
+          {reviewerSuccess && (
+            <p className="text-sm text-green-600">{reviewerSuccess}</p>
+          )}
+
+          {reviewersLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Loading reviewers...
+            </p>
+          ) : reviewers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No active reviewers found.
+            </p>
+          ) : (
+            <div className="divide-y">
+              {reviewers.map((reviewer) => (
+                <div
+                  key={reviewer.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">{reviewer.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {reviewer.email}
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={removingReviewerId === reviewer.id}
+                    onClick={() => void handleDeleteReviewer(reviewer)}
+                  >
+                    {removingReviewerId === reviewer.id
+                      ? "Removing..."
+                      : "Remove"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

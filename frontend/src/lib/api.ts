@@ -181,6 +181,8 @@ export async function createReviewerViaApi(
 }
 
 export async function getAdminStatsViaApi(): Promise<AdminStats> {
+
+  
   const response = await authenticatedFetch("/admin/stats");
 
   if (!response.ok) {
@@ -193,6 +195,42 @@ export async function getAdminStatsViaApi(): Promise<AdminStats> {
 }
 
 // ANALYSIS MAPPING
+export interface Reviewer {
+  id: number;
+  name: string;
+  email: string;
+  role: "reviewer";
+}
+
+export async function getReviewersViaApi(): Promise<Reviewer[]> {
+  const response = await authenticatedFetch("/admin/reviewers");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load reviewers.")
+    );
+  }
+
+  const data: { total_reviewers: number; reviewers: Reviewer[] } =
+    await response.json();
+
+  return data.reviewers;
+}
+
+export async function deleteReviewerViaApi(
+  reviewerId: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/admin/reviewers/${reviewerId}`,
+    { method: "DELETE" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not remove reviewer.")
+    );
+  }
+}
 
 function mapCategory(type: string): IssueCategory {
   switch (type) {
