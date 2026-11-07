@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   createReviewerViaApi,
@@ -311,23 +311,48 @@ function AdminDashboard({ name }: { name: string }) {
 
 function Dashboard() {
   const state = useAppState();
-const { user } = useAuth();
-if (user?.role === "admin") {
-  return <AdminDashboard name={user.name} />;
-}
-const submissions = state.submissions;
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-const roleLabel = user?.role
-  ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
-  : "";
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login", replace: true });
+    }
+  }, [loading, user, navigate]);
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-muted-foreground">
+          Checking your login...
+        </p>
+      </div>
+    );
+  }
+
+    if (user.role === "admin") {
+    return <AdminDashboard name={user.name} />;
+  }
+
+  const submissions = state.submissions;
+
+  const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
   const totalChecks = submissions.length;
+
   const issuesDetected = submissions.reduce(
     (sum, s) => sum + s.analysis.issues.length,
     0,
   );
-  const pendingReviews = submissions.filter((s) => s.reviewStatus === "pending_review").length;
-  const approved = submissions.filter((s) => s.reviewStatus === "approved").length;
+
+  const pendingReviews = submissions.filter(
+    (s) => s.reviewStatus === "pending_review"
+  ).length;
+
+  const approved = submissions.filter(
+    (s) => s.reviewStatus === "approved"
+  ).length;
+
   const recent = [...submissions]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5);
