@@ -156,7 +156,6 @@ function NotificationsMenu() {
 
 function Avatar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -164,33 +163,84 @@ function Avatar() {
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)
-    .join("");
+    .join("")
+    .toUpperCase();
+
+  const roleLabel =
+    user.role.charAt(0).toUpperCase() + user.role.slice(1);
 
   function handleLogout() {
-  logout();
-  window.location.href = "/login";
-}
+    logout();
+    window.location.href = "/login";
+  }
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
-        {initials}
-      </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          aria-label="Open account menu"
+          className="flex items-center gap-2 rounded-full outline-none transition-colors hover:bg-muted p-1.5"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+            {initials}
+          </div>
 
-      <div className="hidden md:block">
-        <p className="text-sm leading-tight font-medium">{user.name}</p>
-        <p className="text-xs capitalize text-muted-foreground">{user.role}</p>
-      </div>
+          <div className="hidden text-left md:block">
+            <p className="text-sm leading-tight font-medium">
+              {user.name}
+            </p>
+            <p className="text-xs capitalize text-muted-foreground">
+              {roleLabel}
+            </p>
+          </div>
+        </button>
+      </DropdownMenuTrigger>
 
-      <button
-        onClick={handleLogout}
-        className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-      >
-        Logout
-      </button>
-    </div>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold">
+              {user.name}
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {user.email}
+            </span>
+          </div>
+        </DropdownMenuLabel>
+
+        <DropdownMenuSeparator />
+
+        <div className="px-2 py-2">
+          <p className="text-xs text-muted-foreground">
+            Account role
+          </p>
+          <p className="mt-1 text-sm font-medium">
+            {roleLabel}
+          </p>
+        </div>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link to="/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            Account settings
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          onSelect={handleLogout}
+          className="cursor-pointer text-destructive focus:text-destructive"
+        >
+          Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });

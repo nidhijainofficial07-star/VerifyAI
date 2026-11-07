@@ -27,10 +27,10 @@ app.include_router(admin_router)
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
 allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
@@ -195,3 +195,52 @@ def review_report(
         "review_status": request.review_status,
         "reviewer_comment": request.reviewer_comment
     }
+
+
+@app.get("/admin/stats")
+def get_admin_stats(
+    current_user: dict = Depends(require_roles("admin"))
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            # Count users by role
+            cursor.execute("""
+                SELECT
+                    COUNT(*) AS total_users,
+                    COUNT(*) FILTER (WHERE role = 'creator') AS total_creators,
+                    COUNT(*) FILTER (WHERE role = 'reviewer') AS total_reviewers,
+                    COUNT(*) FILTER (WHERE role = 'admin') AS total_admins
+                FROM users
+                WHERE is_active = TRUE
+            """)
+            user_stats = cursor.fetchone()
+
+            # Count reports by review status
+            cursor.execute("""
+                SELECT
+                    COUNT(*) AS total_reports,
+                    COUNT(*) FILTER (
+                        WHERE review_status = 'pending'
+                    ) AS pending_reviews,
+                    COUNT(*) FILTER (
+                        WHERE review_status IN ('approved', 'rejected', 'request_changes')
+                    ) AS completed_reviews
+                FROM reports
+            """)
+            report_stats = cursor.fetchone()
+
+    return {
+        "users": {
+            "total": user_stats["total_users"],
+            "creators": user_stats["total_creators"],
+            "reviewers": user_stats["total_reviewers"],
+            "admins": user_stats["total_admins"]
+        },
+        "reports": {
+            "total": report_stats["total_reports"],
+            "pending": report_stats["pending_reviews"],
+            "completed": report_stats["completed_reviews"]
+        }
+    }
+

@@ -1,4 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
+import {
+  createReviewerViaApi,
+  getAdminStatsViaApi,
+  type AdminStats,
+} from "@/lib/api";
+
 import {
   AlertTriangle,
   ArrowRight,
@@ -12,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { formatDateTime } from "@/lib/format";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ComplianceBadge, ReviewBadge } from "@/components/status-badges";
@@ -66,9 +74,252 @@ function StatCard({
   );
 }
 
+function AdminDashboard({ name }: { name: string }) {
+  const [reviewerName, setReviewerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+
+  async function loadStats() {
+    setStatsLoading(true);
+    setStatsError("");
+
+    try {
+      const data = await getAdminStatsViaApi();
+      setStats(data);
+    } catch (err) {
+      setStatsError(
+        err instanceof Error ? err.message : "Could not load statistics."
+      );
+    } finally {
+      setStatsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadStats();
+  }, []);
+
+  async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      await createReviewerViaApi(reviewerName, email, password);
+
+      setSuccess(`Reviewer account created successfully for ${email}.`);
+      setReviewerName("");
+      setEmail("");
+      setPassword("");
+
+      await loadStats();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create reviewer account."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Welcome back, {name.split(" ")[0]}!
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Admin Dashboard — Manage reviewer access and oversee VerityAI.
+        </p>
+      </div>
+
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Platform Overview</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadStats()}
+            disabled={statsLoading}
+          >
+            {statsLoading ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
+
+        {statsError && (
+          <p className="mb-4 text-sm text-destructive">{statsError}</p>
+        )}
+
+        {statsLoading && !stats && (
+          <p className="text-sm text-muted-foreground">
+            Loading platform statistics...
+          </p>
+        )}
+
+        {stats && (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              icon={ShieldCheck}
+              label="Total Users"
+              value={stats.users.total}
+              hint="Active platform accounts"
+            />
+            <StatCard
+              icon={BookOpenText}
+              label="Creators"
+              value={stats.users.creators}
+              hint="Content creators"
+            />
+            <StatCard
+              icon={ClipboardCheck}
+              label="Reviewers"
+              value={stats.users.reviewers}
+              hint="Review team accounts"
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label="Administrators"
+              value={stats.users.admins}
+              hint="Admin accounts"
+            />
+            <StatCard
+              icon={FileSearch}
+              label="Total Reports"
+              value={stats.reports.total}
+              hint="All submitted analyses"
+            />
+            <StatCard
+              icon={Clock}
+              label="Pending Reviews"
+              value={stats.reports.pending}
+              hint="Awaiting human decisions"
+            />
+            <StatCard
+              icon={CheckCircle2}
+              label="Completed Reviews"
+              value={stats.reports.completed}
+              hint="Approved, rejected or changes requested"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardContent className="flex items-center gap-4">
+            <ShieldCheck className="h-9 w-9 text-primary" />
+            <div>
+              <p className="font-semibold">Administrator</p>
+              <p className="text-sm text-muted-foreground">
+                Full administrative access
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center gap-4">
+            <ClipboardCheck className="h-9 w-9 text-primary" />
+            <div>
+              <p className="font-semibold">Reviewer Management</p>
+              <p className="text-sm text-muted-foreground">
+                Create accounts for brand reviewers
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" />
+            Create New Reviewer
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Create a reviewer account. The reviewer can then log in using the
+            shared VerityAI login page.
+          </p>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleCreateReviewer} className="max-w-xl space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Full Name</label>
+              <input
+                required
+                minLength={2}
+                value={reviewerName}
+                onChange={(e) => setReviewerName(e.target.value)}
+                placeholder="Enter reviewer name"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="reviewer@example.com"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Temporary Password</label>
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter a strong password"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+
+            {success && (
+              <p className="text-sm text-green-600">{success}</p>
+            )}
+
+            <Button type="submit" disabled={loading}>
+              {loading ? "Creating..." : "Create Reviewer Account"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function Dashboard() {
   const state = useAppState();
-  const submissions = state.submissions;
+const { user } = useAuth();
+if (user?.role === "admin") {
+  return <AdminDashboard name={user.name} />;
+}
+const submissions = state.submissions;
+
+const roleLabel = user?.role
+  ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+  : "";
 
   const totalChecks = submissions.length;
   const issuesDetected = submissions.reduce(
@@ -84,13 +335,16 @@ function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {state.user.name.split(" ")[0]}! Let's keep your brand consistent.
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every piece of content is checked against your approved brand knowledge before it goes out.
-        </p>
-      </div>
+  <h2 className="text-2xl font-semibold tracking-tight">
+    Welcome back, {user?.name?.split(" ")[0] || "User"}!
+  </h2>
+
+  <p className="mt-1 text-sm text-muted-foreground">
+    You are logged in as{" "}
+    <span className="font-medium text-primary">{roleLabel}</span>.
+    Every brand decision deserves to be verified.
+  </p>
+</div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={ShieldCheck} label="Total Content Checks" value={totalChecks} hint="All-time analyses" />

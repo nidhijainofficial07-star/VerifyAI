@@ -24,6 +24,20 @@ export interface AuthUser {
   role: "creator" | "reviewer" | "admin";
 }
 
+export interface AdminStats {
+  users: {
+    total: number;
+    creators: number;
+    reviewers: number;
+    admins: number;
+  };
+  reports: {
+    total: number;
+    pending: number;
+    completed: number;
+  };
+}
+
 interface AuthResponse {
   access_token: string;
   token_type: string;
@@ -164,6 +178,18 @@ export async function createReviewerViaApi(
 
   const data = await response.json();
   return data.reviewer;
+}
+
+export async function getAdminStatsViaApi(): Promise<AdminStats> {
+  const response = await authenticatedFetch("/admin/stats");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load admin statistics.")
+    );
+  }
+
+  return response.json();
 }
 
 // ANALYSIS MAPPING
