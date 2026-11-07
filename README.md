@@ -165,6 +165,8 @@ VerityAI is currently an MVP, and some proposed features are still under develop
 
 **Team NAIVA**
 
+**Nidhi Rakesh Jain**
+
 Individual Project Lead & Developer
 
 VerityAI was planned and developed as an individual project for CodeNexus India 2026.
