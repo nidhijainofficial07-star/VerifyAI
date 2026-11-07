@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { getSubmissionsViaApi } from "@/lib/api";
 import { AlertTriangle, ClipboardCheck, ScanSearch } from "lucide-react";
-import { useAppState } from "@/lib/store";
 import { formatDateTime, riskLevel } from "@/lib/format";
 import { summarizeCounts } from "@/lib/analysis";
 import type { Submission } from "@/lib/types";
@@ -70,27 +71,60 @@ function ReviewRow({ submission }: { submission: Submission }) {
 
 
 function ReviewCenterPage() {
-  const state = useAppState();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadReports() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const data = await getSubmissionsViaApi();
+        setSubmissions(data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not load reports."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadReports();
+  }, []);
 
   const isDetailPage = useMatch({
     from: "/review/$id",
     shouldThrow: false,
   });
 
-  const pending = state.submissions
-    .filter((s) => s.reviewStatus === "pending_review")
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const pending = submissions
+  .filter((s) => s.reviewStatus === "pending_review")
+  .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-  const decided = state.submissions
-    .filter((s) => s.reviewStatus !== "pending_review")
-    .sort((a, b) =>
-      (b.review?.at ?? b.createdAt).localeCompare(
-        a.review?.at ?? a.createdAt
-      )
-    );
+const decided = submissions
+  .filter((s) => s.reviewStatus !== "pending_review")
+  .sort((a, b) =>
+    (b.review?.at ?? b.createdAt).localeCompare(
+      a.review?.at ?? a.createdAt
+    )
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {!isDetailPage && loading && (
+  <p className="text-sm text-muted-foreground">
+    Loading review queue...
+  </p>
+)}
+
+{!isDetailPage && error && (
+  <p className="text-sm text-destructive">
+    {error}
+  </p>
+)}
       {!isDetailPage && (
         <>
           <div>
@@ -109,30 +143,30 @@ function ReviewCenterPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {pending.length === 0 ? (
-                <EmptyState
-                  icon={AlertTriangle}
-                  title="Queue is clear"
-                  description="No content is waiting for a human decision right now."
-                  action={
-                    <Button asChild variant="outline">
-                      <Link to="/analyzer">
-                        <ScanSearch className="h-4 w-4" /> Analyse new content
-                      </Link>
-                    </Button>
-                  }
-                />
-              ) : (
-                <ul className="space-y-3">
-                  {pending.map((s) => (
-                    <ReviewRow key={s.id} submission={s} />
-                  ))}
-                </ul>
-              )}
+{!loading && !error && pending.length === 0 ? (
+  <EmptyState
+    icon={AlertTriangle}
+    title="Queue is clear"
+    description="No content is waiting for a human decision right now."
+    action={
+      <Button asChild variant="outline">
+        <Link to="/analyzer">
+          <ScanSearch className="h-4 w-4" /> Analyse new content
+        </Link>
+      </Button>
+    }
+  />
+) : !loading && !error && pending.length > 0 ? (
+  <ul className="space-y-3">
+    {pending.map((s) => (
+      <ReviewRow key={s.id} submission={s} />
+    ))}
+  </ul>
+) : null}
             </CardContent>
           </Card>
 
-          {decided.length > 0 && (
+          {!loading && !error && decided.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">

@@ -421,7 +421,11 @@ export async function getSubmissionViaApi(
 
   return mapBackendReportToSubmission(report);
 }
+export async function getSubmissionsViaApi(): Promise<Submission[]> {
+  const reports = await getReportsViaApi();
 
+  return reports.map(mapBackendReportToSubmission);
+}
 // CONTENT ANALYSIS
 
 export async function analyzeContentViaApi(

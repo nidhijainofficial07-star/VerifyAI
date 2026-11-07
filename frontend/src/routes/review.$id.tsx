@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { submitReviewViaApi } from "@/lib/api";
+import {
+  getSubmissionViaApi,
+  submitReviewViaApi,
+} from "@/lib/api";
 import {
   ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
   FileWarning,
   MessageSquare,
-  RotateCcw,
   XCircle,
 } from "lucide-react";
-import { reopenReview, submitReview, useAppState } from "@/lib/store";
 import { formatDateTime, riskLevel } from "@/lib/format";
 import type { Submission } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,10 +44,60 @@ export const Route = createFileRoute("/review/$id")({
 });
 
 function ReviewDetailPage() {
-  const { id } = useParams({ from: Route.id });
-  const state = useAppState();
-  const submission = state.submissions.find((s) => s.id === id);
-  const [comment, setComment] = useState("");
+const { id } = useParams({ from: Route.id });
+
+const [submission, setSubmission] = useState<Submission | null>(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState("");
+const [comment, setComment] = useState("");
+
+useEffect(() => {
+  async function loadSubmission() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await getSubmissionViaApi(id);
+      setSubmission(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not load this submission."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  void loadSubmission();
+}, [id]);
+if (loading) {
+  return (
+    <div className="mx-auto max-w-3xl py-10 text-center">
+      <p className="text-sm text-muted-foreground">
+        Loading submission...
+      </p>
+    </div>
+  );
+}
+
+if (error) {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <EmptyState
+        icon={FileWarning}
+        title="Could not load submission"
+        description={error}
+        action={
+          <Button asChild>
+            <Link to="/review">Back to Review Center</Link>
+          </Button>
+        }
+      />
+    </div>
+  );
+}
 
   if (!submission) {
     return (
@@ -80,8 +131,8 @@ function ReviewDetailPage() {
       comment.trim()
     );
 
-    // Save locally only after backend confirms success.
-    submitReview(submission.id, decision, comment.trim());
+    const updatedSubmission = await getSubmissionViaApi(submission.id);
+setSubmission(updatedSubmission);
 
     setComment("");
 
@@ -117,7 +168,6 @@ function ReviewBody({
   record: (decision: "approved" | "rejected" | "changes_requested") => void;
 }) {
   const a = submission.analysis;
-  const state = useAppState();
   const pendingIssues = a.issues.filter(
     (i) => i.resolution === "pending"
   ).length;
@@ -231,19 +281,6 @@ function ReviewBody({
                 — {submission.review.reviewer},{" "}
                 {formatDateTime(submission.review.at)}
               </p>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={() => {
-                  reopenReview(submission.id);
-                  toast.success("Review reopened");
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reopen review
-              </Button>
             </div>
           )}
 
@@ -284,10 +321,9 @@ function ReviewBody({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Correction decisions and final content approval are separate.
-            Your reviewer name ({state.user.name}) and decision timestamp
-            are recorded in History.
-          </p>
+  Correction decisions and final content approval are separate.
+  Your decision and comment are saved to the report's review record.
+</p>
         </CardContent>
       </Card>
     </div>
