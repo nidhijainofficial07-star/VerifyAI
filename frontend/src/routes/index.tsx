@@ -5,10 +5,11 @@ import {
   getAdminStatsViaApi,
   getReviewersViaApi,
   deleteReviewerViaApi,
+  getSubmissionsViaApi,
   type AdminStats,
   type Reviewer,
 } from "@/lib/api";
-
+import type { Submission } from "@/lib/types";
 import {
   AlertTriangle,
   ArrowRight,
@@ -20,7 +21,6 @@ import {
   ScanSearch,
   ShieldCheck,
 } from "lucide-react";
-import { useAppState } from "@/lib/store";
 import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -424,9 +424,34 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
 }
 
 function Dashboard() {
-  const state = useAppState();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+const [reportsLoading, setReportsLoading] = useState(true);
+const [reportsError, setReportsError] = useState("");
+
+useEffect(() => {
+  if (!user || user.role === "admin") return;
+
+
+  async function loadReports() {
+    setReportsLoading(true);
+    setReportsError("");
+
+    try {
+      const data = await getSubmissionsViaApi();
+      setSubmissions(data);
+    } catch (err) {
+      setReportsError(
+        err instanceof Error ? err.message : "Could not load reports."
+      );
+    } finally {
+      setReportsLoading(false);
+    }
+  }
+
+  void loadReports();
+}, [user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -447,8 +472,26 @@ function Dashboard() {
     if (user.role === "admin") {
     return <AdminDashboard name={user.name} />;
   }
+if (reportsLoading) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <p className="text-sm text-muted-foreground">
+        Loading your reports...
+      </p>
+    </div>
+  );
+}
 
-  const submissions = state.submissions;
+if (reportsError) {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
+      <p className="text-sm text-destructive">{reportsError}</p>
+      <Button onClick={() => window.location.reload()} variant="outline">
+        Try Again
+      </Button>
+    </div>
+  );
+}
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
 

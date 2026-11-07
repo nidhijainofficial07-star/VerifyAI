@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { getSubmissionsViaApi } from "@/lib/api";
 import { AlertTriangle, CheckCircle2, ClipboardCheck, FileSearch, ScanSearch } from "lucide-react";
-import { useAppState } from "@/lib/store";
 import { formatDateTime } from "@/lib/format";
 import { summarizeCounts } from "@/lib/analysis";
 import type { Submission } from "@/lib/types";
@@ -66,19 +67,50 @@ function ReportRow({ submission }: { submission: Submission }) {
 
 
 function ReportsPage() {
-  const state = useAppState();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadReports() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const data = await getSubmissionsViaApi();
+        setSubmissions(data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Could not load reports."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadReports();
+  }, []);
 
   const isDetailPage = useMatch({
     from: "/reports/$id",
     shouldThrow: false,
   });
 
-  const sorted = [...state.submissions].sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt)
-  );
+  const sorted = [...submissions].sort((a, b) =>
+  b.createdAt.localeCompare(a.createdAt)
+);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {!isDetailPage && loading && (
+  <p className="text-sm text-muted-foreground">
+    Loading reports...
+  </p>
+)}
+
+{!isDetailPage && error && (
+  <p className="text-sm text-destructive">{error}</p>
+)}
       {!isDetailPage && (
         <>
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -98,7 +130,7 @@ function ReportsPage() {
             </Button>
           </div>
 
-          {sorted.length === 0 ? (
+          {!loading && !error && sorted.length === 0 ? (
             <EmptyState
               icon={FileSearch}
               title="No reports yet"
@@ -111,8 +143,8 @@ function ReportsPage() {
                 </Button>
               }
             />
-          ) : (
-            <Card>
+          ) : !loading && !error && sorted.length > 0 ? (
+  <Card>
               <CardHeader>
                 <CardTitle className="text-base">
                   {sorted.length} report{sorted.length === 1 ? "" : "s"}
@@ -125,13 +157,13 @@ function ReportsPage() {
                   ))}
                 </ul>
               </CardContent>
-            </Card>
-          )}
+              </Card>
+          ) : null}
 
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            {state.submissions.some(
-              (s) => s.reviewStatus === "pending_review"
-            ) ? (
+            {submissions.some(
+  (s) => s.reviewStatus === "pending_review"
+) ? (
               <>
                 <AlertTriangle className="h-3.5 w-3.5 text-warning-foreground" />
                 Some reports are waiting on a human decision.

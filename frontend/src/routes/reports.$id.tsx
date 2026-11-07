@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { getSubmissionViaApi } from "@/lib/api";
+import type { Submission } from "@/lib/types";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -8,7 +10,7 @@ import {
   FileWarning,
   ShieldCheck,
 } from "lucide-react";
-import { resolveIssue, useAppState } from "@/lib/store";
+// No local-store import needed here.
 import { summarizeCounts } from "@/lib/analysis";
 import { formatDateTime, riskLevel } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,9 +46,59 @@ export const Route = createFileRoute("/reports/$id")({
 
 function ReportDetailPage() {
   const { id } = useParams({ from: Route.id });
-  const state = useAppState();
-  const submission = state.submissions.find((s) => s.id === id);
-  const [copied, setCopied] = useState(false);
+
+const [submission, setSubmission] = useState<Submission | null>(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState("");
+const [copied, setCopied] = useState(false);
+
+useEffect(() => {
+  async function loadSubmission() {
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await getSubmissionViaApi(id);
+      setSubmission(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not load this report."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  void loadSubmission();
+}, [id]);
+if (loading) {
+  return (
+    <div className="mx-auto max-w-3xl py-10 text-center">
+      <p className="text-sm text-muted-foreground">
+        Loading compliance report...
+      </p>
+    </div>
+  );
+}
+
+if (error) {
+  return (
+    <div className="mx-auto max-w-3xl">
+      <EmptyState
+        icon={FileWarning}
+        title="Could not load report"
+        description={error}
+        action={
+          <Button asChild>
+            <Link to="/reports">Back to Compliance Reports</Link>
+          </Button>
+        }
+      />
+    </div>
+  );
+}
 
   if (!submission) {
     return (
@@ -191,23 +243,12 @@ function ReportDetailPage() {
           />
         ) : (
           a.issues.map((issue) => (
-            <IssueCard
-              key={issue.id}
-              issue={issue}
-              onAccept={() => {
-                resolveIssue(submission.id, issue.id, "accepted");
-                toast.success("Correction accepted");
-              }}
-              onReject={() => {
-                resolveIssue(submission.id, issue.id, "rejected");
-                toast.success("Suggestion rejected");
-              }}
-              onEdit={(text) => {
-                resolveIssue(submission.id, issue.id, "edited", text);
-                toast.success("Edited correction saved");
-              }}
-            />
-          ))
+  <IssueCard
+    key={issue.id}
+    issue={issue}
+    interactive={false}
+  />
+))
         )}
       </div>
     </div>
