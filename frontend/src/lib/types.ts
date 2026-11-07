@@ -135,3 +135,36 @@ export interface AppState {
   documents: GuidelineDocument[];
   submissions: Submission[];
 }
+
+// Backend API response types
+
+export interface BackendIssue {
+  type: string;
+  severity: Severity;
+  status: string;
+  message: string;
+  evidence: string;
+  suggestion: string;
+}
+
+export interface BackendAnalysis {
+  brand: string;
+  total_issues: number;
+  issues: BackendIssue[];
+  overall_status: "review_required" | "no_issues_detected";
+}
+
+export interface BackendReport {
+  report_id: number;
+  brand: string;
+  content: string;
+  result: BackendAnalysis;
+  created_at: string;
+  review_status: "pending" | "approved" | "rejected" | "request_changes";
+  reviewer_comment: string;
+}
+
+export interface BackendReportsResponse {
+  total_reports: number;
+  reports: BackendReport[];
+}

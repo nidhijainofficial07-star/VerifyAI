@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
 import {
   Bell,
   BookOpenText,
@@ -25,13 +26,13 @@ import {
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Brand Knowledge", url: "/brand-knowledge", icon: BookOpenText },
-  { title: "Content Analyzer", url: "/analyzer", icon: ScanSearch },
-  { title: "Compliance Reports", url: "/reports", icon: FileSearch },
-  { title: "Review Center", url: "/review", icon: ClipboardCheck },
-  { title: "History", url: "/history", icon: History },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["creator", "reviewer", "admin"] },
+  { title: "Brand Knowledge", url: "/brand-knowledge", icon: BookOpenText, roles: ["creator", "admin"] },
+  { title: "Content Analyzer", url: "/analyzer", icon: ScanSearch, roles: ["creator"] },
+  { title: "Compliance Reports", url: "/reports", icon: FileSearch, roles: ["creator", "reviewer", "admin"] },
+  { title: "Review Center", url: "/review", icon: ClipboardCheck, roles: ["reviewer", "admin"] },
+  { title: "History", url: "/history", icon: History, roles: ["creator"] },
+  { title: "Settings", url: "/settings", icon: Settings, roles: ["creator", "reviewer", "admin"] },
 ] as const;
 
 const PAGE_TITLES: Record<string, string> = {
@@ -46,9 +47,13 @@ const PAGE_TITLES: Record<string, string> = {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useAuth();
+const visibleItems = NAV_ITEMS.filter(
+  (item) => user && (item.roles as readonly string[]).includes(user.role)
+);
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const active =
           item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
         return (
@@ -150,30 +155,49 @@ function NotificationsMenu() {
 }
 
 function Avatar() {
-  const state = useAppState();
-  const initials = state.user.name
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!user) return null;
+
+  const initials = user.name
     .split(" ")
-    .map((p) => p[0])
+    .map((part) => part[0])
     .slice(0, 2)
     .join("");
+
+  function handleLogout() {
+  logout();
+  window.location.href = "/login";
+}
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground">
         {initials}
       </div>
+
       <div className="hidden md:block">
-        <p className="text-sm leading-tight font-medium">{state.user.name}</p>
-        <p className="text-xs text-muted-foreground">{state.user.role}</p>
+        <p className="text-sm leading-tight font-medium">{user.name}</p>
+        <p className="text-xs capitalize text-muted-foreground">{user.role}</p>
       </div>
+
+      <button
+        onClick={handleLogout}
+        className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+      >
+        Logout
+      </button>
     </div>
   );
 }
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pageTitle = PAGE_TITLES[pathname] ?? "VerityAI";
-
+  if (pathname === "/login" || pathname === "/register") {
+  return <>{children}</>;
+}
   return (
     <div className="min-h-screen w-full bg-background">
       {/* Desktop sidebar */}

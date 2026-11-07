@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyzerRouteImport } from './routes/analyzer'
 import { Route as BrandKnowledgeRouteImport } from './routes/brand-knowledge'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -37,6 +39,16 @@ const BrandKnowledgeRoute = BrandKnowledgeRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -70,6 +82,8 @@ export interface FileRoutesByFullPath {
   '/analyzer': typeof AnalyzerRoute
   '/brand-knowledge': typeof BrandKnowledgeRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRouteWithChildren
   '/review': typeof ReviewRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -81,6 +95,8 @@ export interface FileRoutesByTo {
   '/analyzer': typeof AnalyzerRoute
   '/brand-knowledge': typeof BrandKnowledgeRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRouteWithChildren
   '/review': typeof ReviewRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -93,6 +109,8 @@ export interface FileRoutesById {
   '/analyzer': typeof AnalyzerRoute
   '/brand-knowledge': typeof BrandKnowledgeRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRouteWithChildren
   '/review': typeof ReviewRouteWithChildren
   '/settings': typeof SettingsRoute
@@ -106,6 +124,8 @@ export interface FileRouteTypes {
     | '/analyzer'
     | '/brand-knowledge'
     | '/history'
+    | '/login'
+    | '/register'
     | '/reports'
     | '/review'
     | '/settings'
@@ -117,6 +137,8 @@ export interface FileRouteTypes {
     | '/analyzer'
     | '/brand-knowledge'
     | '/history'
+    | '/login'
+    | '/register'
     | '/reports'
     | '/review'
     | '/settings'
@@ -128,6 +150,8 @@ export interface FileRouteTypes {
     | '/analyzer'
     | '/brand-knowledge'
     | '/history'
+    | '/login'
+    | '/register'
     | '/reports'
     | '/review'
     | '/settings'
@@ -140,6 +164,8 @@ export interface RootRouteChildren {
   AnalyzerRoute: typeof AnalyzerRoute
   BrandKnowledgeRoute: typeof BrandKnowledgeRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRouteWithChildren
   ReviewRoute: typeof ReviewRouteWithChildren
   SettingsRoute: typeof SettingsRoute
@@ -173,6 +199,20 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -240,6 +280,8 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyzerRoute: AnalyzerRoute,
   BrandKnowledgeRoute: BrandKnowledgeRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRouteWithChildren,
   ReviewRoute: ReviewRouteWithChildren,
   SettingsRoute: SettingsRoute,

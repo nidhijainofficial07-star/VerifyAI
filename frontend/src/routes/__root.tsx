@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
-
+import { AuthProvider } from "../lib/auth-context";
 import appCss from "../styles.css?url";
 import { reportAppError } from "../lib/error-reporting";
 import { AppShell } from "@/components/app-sidebar";
@@ -142,15 +142,18 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell>
-        <Outlet />
-      </AppShell>
-      <Toaster position="bottom-right" richColors />
+      <AuthProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+        <Toaster position="bottom-right" richColors />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -4,14 +4,15 @@ import json
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from database import get_connection, create_tables
 from brand import get_brand_profile
 from rules import analyze_content
-
+from auth_routes import router as auth_router, admin_router
+from auth import require_roles, get_current_user
 
 app = FastAPI(
     title="VerityAI API",
@@ -20,14 +21,16 @@ app = FastAPI(
 )
 
 create_tables()
-
-
+app.include_router(auth_router)
+app.include_router(admin_router)
 # CORS configuration
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
@@ -75,7 +78,10 @@ def get_brand():
 
 
 @app.post("/analyze")
-def analyze(request: ContentRequest):
+def analyze(
+    request: ContentRequest,
+    current_user: dict = Depends(require_roles("creator"))
+):
     result = analyze_content(request.content)
     created_at = datetime.now(timezone.utc).isoformat()
 
@@ -86,15 +92,17 @@ def analyze(request: ContentRequest):
                     brand,
                     content,
                     result_json,
-                    created_at
+                    created_at,
+                    creator_id
                 )
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
             """, (
                 result["brand"],
                 request.content,
                 json.dumps(result),
-                created_at
+                created_at,
+                current_user["id"]
             ))
 
             report_id = cursor.fetchone()["id"]
@@ -105,16 +113,26 @@ def analyze(request: ContentRequest):
         **result
     }
 
-
 @app.get("/reports")
-def get_reports():
+def get_reports(
+    current_user: dict = Depends(get_current_user)
+):
     with get_connection() as connection:
         with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT *
-                FROM reports
-                ORDER BY id DESC
-            """)
+
+            if current_user["role"] in ("reviewer", "admin"):
+                cursor.execute("""
+                    SELECT *
+                    FROM reports
+                    ORDER BY id DESC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT *
+                    FROM reports
+                    WHERE creator_id = %s
+                    ORDER BY id DESC
+                """, (current_user["id"],))
 
             rows = cursor.fetchall()
 
@@ -136,9 +154,12 @@ def get_reports():
         "reports": reports
     }
 
-
 @app.post("/reports/{report_id}/review")
-def review_report(report_id: int, request: ReviewRequest):
+def review_report(
+    report_id: int,
+    request: ReviewRequest,
+    current_user: dict = Depends(require_roles("reviewer", "admin"))
+):
     with get_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -155,15 +176,18 @@ def review_report(report_id: int, request: ReviewRequest):
                 )
 
             cursor.execute("""
-                UPDATE reports
-                SET review_status = %s,
-                    reviewer_comment = %s
-                WHERE id = %s
-            """, (
-                request.review_status,
-                request.reviewer_comment,
-                report_id
-            ))
+    UPDATE reports
+    SET review_status = %s,
+        reviewer_comment = %s,
+        reviewer_id = %s,
+        reviewed_at = NOW()
+    WHERE id = %s
+""", (
+    request.review_status,
+    request.reviewer_comment,
+    current_user["id"],
+    report_id
+))
 
     return {
         "message": "Review decision saved successfully",
