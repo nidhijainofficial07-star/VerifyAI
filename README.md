@@ -1,193 +1,174 @@
 # VerityAI — Every Brand Decision, Verified.
 
-**Evidence-Backed Explainable Brand Compliance**
+**An evidence-focused brand compliance and governance platform.**
 
-VerityAI is a brand compliance platform that analyzes marketing content against defined brand guidelines, product information, and approved claims. It identifies potential violations, explains why content needs attention, and provides actionable suggestions to help teams maintain brand consistency and accuracy.
+VerityAI helps teams check whether their content follows approved brand information, identify inconsistencies and manage compliance decisions through a structured human-review workflow.
 
-> We don't just tell you it's wrong. We show you the rule, the evidence, and the fix.
+**Team:** NAIVA  
+**Project:** VerityAI  
+**Hackathon:** CodeNexus India 2026 — Round 2
 
-## ✨ Key Features
+---
 
-- **Content Analysis:** Analyze marketing content against configured brand rules.
-- **Price Verification:** Detect price mismatches between promotional content and approved product pricing.
-- **Claim Validation:** Identify unsupported or unverified marketing claims.
-- **Severity Classification:** Categorize findings based on their severity.
-- **Explainable Findings:** Show the relevant rule and evidence behind each finding.
-- **Suggested Fixes:** Provide recommendations to improve non-compliant content.
-- **Human Review:** Allow reviewers to approve, reject, or request changes.
-- **Report History:** Save and revisit previous analysis reports.
-- **Review Tracking:** Persist human review decisions in the backend database.
+## 🌐 Live Application
 
-## 🛠️ Technology Stack
+- **Frontend:** https://frontend-roan-omega-94.vercel.app/
+- **Backend:** https://verityai-backend-bsbo.onrender.com/
+- **GitHub Repository:** https://github.com/nidhijainofficial07-star/VerifyAI
 
-| Layer | Technologies |
-|---|---|
-| Frontend | React, TypeScript |
-| Framework | TanStack Start |
-| Styling | Tailwind CSS |
-| Backend | Python, FastAPI |
-| Database | SQLite |
-| API | REST API |
+---
 
-## ⚙️ How It Works
+## 💡 About the Project
 
-1. **Configure Brand Knowledge:** Define approved product details, pricing, guidelines, and claims.
-2. **Submit Content:** Enter marketing content for analysis.
-3. **Analyze:** The rule-based engine checks the submitted content against configured information.
-4. **Review Findings:** View detected mismatches, unsupported claims, severity, and explanations.
-5. **Take Action:** Use suggested corrections or send findings for human review.
-6. **Record Decisions:** Save review decisions and access previous reports.
+Maintaining consistent brand communication becomes difficult when content is created by different people and teams.
 
-## 🧪 Example Scenarios
+Incorrect product information, outdated prices and unsupported promotional claims can reach customers before anyone notices.
 
-The current test brand is **SmartDesk**.
+VerityAI addresses this problem by comparing submitted content against approved brand information and generating compliance findings that can be reviewed by authorised users.
 
-Approved information:
-- Price: ₹5,000
-- Height adjustable
-- Ergonomic workstation for everyday use
+The current version focuses on explainable, rule-based verification and a backend-supported review workflow.
 
-| Test scenario | Expected result |
-|---|---|
-| Content with approved product details | No issues detected |
-| Product advertised at ₹3,999 instead of ₹5,000 | High-severity price mismatch |
-| Claim: "No. 1 ergonomic desk in India" | Human review required |
-| Claim: "100% productivity improvement" | Human review required |
+---
 
-## 🚀 Getting Started
+## ✨ Features
+
+- **User Authentication:** Secure registration and login using JWT authentication and Argon2 password hashing.
+- **Role-Based Access:** Separate access for Creators, Reviewers and Admins.
+- **Brand Reference Information:** Approved SmartDesk product details and pricing.
+- **Content Analysis:** Text-based checks for incorrect prices and unsupported promotional claims.
+- **Compliance Findings:** Explanations, severity levels and suggested corrections.
+- **Report Management:** Automatically generated reports stored in the database.
+- **Review Center:** Reviewers can approve, reject or request changes to submissions.
+- **Reviewer Comments:** Decisions and comments are saved in the backend.
+- **Dashboard:** Displays report statistics and recent activity.
+- **Admin Dashboard:** Provides platform statistics and user-role management.
+
+---
+
+## 🔐 Demo Login Credentials
+
+You can use the following demo accounts to explore the application.
+
+| Role | Email | Password |
+|---|---|---|
+| Creator | test@teamspace.com | teamspace123 |
+| Reviewer 1 | reviewer@example.com | review@12345 |
+| Reviewer 2 | reviewer2@example.com | review12345 |
+| Admin | mailflow1407@gmail.com | mailflowdemo |
+
+**How to sign in:**
+1. Open the live application.
+2. Navigate to the login page.
+3. Enter the credentials for the role you want to explore.
+4. Sign in to access the corresponding dashboard.
+
+*Note: These should be dedicated demo accounts with non-sensitive credentials. Do not use personal passwords or production secrets.*
+
+---
+
+## ⚙️ Technology Stack
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- TanStack Router
+- Tailwind CSS
+
+### Backend
+- Python
+- FastAPI
+- JWT Authentication (HS256)
+- Argon2 Password Hashing
+
+### Database
+- PostgreSQL
+- Neon
+
+### Deployment
+- Vercel — Frontend
+- Render — Backend
+
+---
+
+## 🔄 How VerityAI Works
+
+1. **Content Submission:** A Creator submits text for compliance analysis.
+2. **Verification:** The analyzer compares the submitted content against approved brand information.
+3. **Issue Detection:** Incorrect product prices and unsupported promotional claims are identified.
+4. **Report Generation:** Findings are presented with explanations, severity levels and suggested corrections.
+5. **Human Review:** An authorised Reviewer examines the report and makes a decision.
+6. **Decision Storage:** The review decision and comments are saved in the backend.
+
+---
+
+## 🧠 Current Analyzer Approach
+
+The current version uses a deterministic, rule-based analyzer rather than an LLM.
+
+This approach focuses on checks that can be explained and verified against approved brand information.
+
+For example, if the approved SmartDesk price is ₹5,000 but submitted content mentions ₹4,000, VerityAI flags the mismatch.
+
+The final compliance decision remains under human control.
+
+---
+
+## 🛠️ Local Setup
 
 ### Prerequisites
-
 - Node.js and npm
-- Python 3.10+
-- Git
+- Python
+- Access to a configured PostgreSQL database
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/VerityAI.git
-cd VerityAI
-```
-
-Replace `YOUR_USERNAME` with your GitHub username.
-
-### 2. Set up the backend
+### Frontend
 
 ```bash
-cd backend
-python -m venv venv
-```
-
-Activate the virtual environment.
-
-**Windows PowerShell:**
-
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Start the backend:
-
-```bash
-uvicorn main:app --reload
-```
-
-The backend will run at:
-
-`http://127.0.0.1:8000`
-
-API documentation:
-
-`http://127.0.0.1:8000/docs`
-
-### 3. Set up the frontend
-
-Open another terminal from the project root:
-
-```bash
-cd frontend
+git clone https://github.com/nidhijainofficial07-star/VerifyAI.git
+cd VerifyAI
 npm install
 npm run dev
 ```
 
-Open the local development URL displayed in your terminal.
+### Backend
 
-## 🔌 API Endpoints
+The backend is built with Python and FastAPI.
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| GET | `/` | Root endpoint |
-| GET | `/health` | Backend health check |
-| GET | `/brand` | Retrieve brand information |
-| POST | `/analyze` | Analyze submitted content |
-| GET | `/reports` | Retrieve analysis reports |
-| POST | `/reports/{id}/review` | Submit a human review decision |
+Install the backend dependencies using the project's requirements file, configure the required environment variables and database connection, and start the FastAPI application.
 
-## 📁 Project Structure
-
-```text
-VerityAI/
-│
-├── backend/
-│   ├── main.py
-│   ├── brand.py
-│   ├── rules.py
-│   ├── database.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── lib/
-│   │   ├── routes/
-│   │   └── styles.css
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── public/
-├── AGENTS.md
-├── README.md
-├── .gitignore
-├── tsconfig.json
-└── vite.config.ts
-```
-
-## 🔍 Current Implementation Status
-
-- Frontend and backend integration implemented.
-- Rule-based brand compliance analysis implemented.
-- Price mismatch detection implemented.
-- Unsupported claims flagged for human review.
-- Human review decisions persisted in SQLite.
-- Report history and API endpoints implemented.
-- Frontend production build tested successfully.
-
-**Important:** The current analysis engine uses predefined rules and configured brand information. It does not currently use an LLM or claim to perform unrestricted semantic verification.
-
-## 🔮 Future Improvements
-
-- AI-assisted semantic analysis of marketing content.
-- Support for multiple brands and customizable guidelines.
-- More advanced claim verification.
-- Document and image content analysis.
-- Enhanced reporting and analytics.
-- Deployment with production-ready database and security configurations.
-
-## 🎯 Project Vision
-
-VerityAI aims to make brand compliance more transparent, explainable, and actionable.
-
-Instead of simply flagging content as incorrect, it helps teams understand the reason behind a finding, identify supporting evidence, and decide how to fix it.
-
-**Every brand decision, verified.**
+*Refer to the backend project configuration for the exact dependency and startup commands.*
 
 ---
 
-Developed by **Team NAIVA** | CodeNexus India 2026
+## ⚠️ Current Limitations
+
+VerityAI is currently an MVP, and some proposed features are still under development.
+
+- Image, screenshot, video and visual document analysis are not implemented.
+- Gemini-based semantic interpretation and RAG-based retrieval are not included.
+- Individual issue-level correction decisions are not yet persisted.
+- Complete corrected-content generation and version history are pending.
+- Reopening completed reviews is not supported.
+- Full reviewer identity and review timestamps are not yet displayed in report details.
+
+---
+
+## 🚀 Future Improvements — Round 3
+
+1. **Better Evidence and Traceability:** Link each finding to the exact approved brand guideline or information used during verification.
+2. **More Reliable Detection:** Expand compliance checks and evaluate accuracy by measuring missed issues and false positives.
+3. **Complete Review Workflow:** Add persistent issue-level corrections, review reopening and a detailed decision history.
+
+---
+
+## 👩‍💻 Project Ownership
+
+**Team NAIVA**
+
+Individual Project Lead & Developer
+
+VerityAI was planned and developed as an individual project for CodeNexus India 2026.
+
+---
+
+**VerityAI — Every Brand Decision, Verified.**
