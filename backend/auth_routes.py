@@ -174,3 +174,53 @@ def create_reviewer(
             "role": reviewer["role"]
         }
     }
+
+@admin_router.get("/reviewers")
+def get_reviewers(
+    current_user: dict = Depends(require_roles("admin"))
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, name, email, role
+                FROM users
+                WHERE role = 'reviewer'
+                  AND is_active = TRUE
+                ORDER BY id DESC
+            """)
+
+            reviewers = cursor.fetchall()
+
+    return {
+        "total_reviewers": len(reviewers),
+        "reviewers": reviewers
+    }
+
+@admin_router.delete("/reviewers/{reviewer_id}")
+def delete_reviewer(
+    reviewer_id: int,
+    current_user: dict = Depends(require_roles("admin"))
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE users
+                SET is_active = FALSE
+                WHERE id = %s
+                  AND role = 'reviewer'
+                  AND is_active = TRUE
+                RETURNING id
+            """, (reviewer_id,))
+
+            deleted_reviewer = cursor.fetchone()
+
+            if deleted_reviewer is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Active reviewer not found."
+                )
+
+    return {
+        "message": "Reviewer account deactivated successfully.",
+        "reviewer_id": reviewer_id
+    }
