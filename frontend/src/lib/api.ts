@@ -1,4 +1,3 @@
-
 import type {
   Analysis,
   ContentType,
@@ -9,6 +8,7 @@ import type {
   BackendIssue,
   BackendReport,
   BackendReportsResponse,
+  Submission,
 } from "./types";
 
 export interface AnalyzeRequest {
@@ -363,6 +363,63 @@ function mapBackendAnalysis(
     counts,
     engine: "FastAPI deterministic rule engine",
   };
+}
+
+function mapBackendReportToSubmission(
+  report: BackendReport
+): Submission {
+  const analysis = mapBackendAnalysis(
+    {
+      created_at: report.created_at,
+      result: report.result,
+    },
+    report.content
+  );
+
+  const reviewStatus = {
+    pending: "pending_review",
+    approved: "approved",
+    rejected: "rejected",
+    request_changes: "changes_requested",
+  } as const;
+
+  return {
+    id: String(report.report_id),
+    title: `${report.brand} — ${report.content.slice(0, 45)}${report.content.length > 45 ? "..." : ""}`,
+    contentType: "Advertisement",
+    content: report.content,
+    createdAt: report.created_at,
+    analysis,
+    reviewStatus: reviewStatus[report.review_status],
+    correctedContent: null,
+    review: report.review_status === "pending"
+      ? null
+      : {
+          decision:
+            report.review_status === "request_changes"
+              ? "changes_requested"
+              : report.review_status,
+          comment: report.reviewer_comment || "",
+          reviewer: "Reviewer",
+          at: report.created_at,
+        },
+  };
+}
+
+export async function getSubmissionViaApi(
+  reportId: string
+): Promise<Submission> {
+  const reports = await getReportsViaApi();
+
+  const report = reports.find(
+    (item) => String(item.report_id) === reportId
+  );
+
+  if (!report) {
+    throw new Error("Report not found.");
+  }
+
+  return mapBackendReportToSubmission(report);
 }
 
 // CONTENT ANALYSIS
