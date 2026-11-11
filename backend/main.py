@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Literal
 
+from brand_routes import router as brand_router
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -23,12 +24,15 @@ app = FastAPI(
 create_tables()
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(brand_router)
 # CORS configuration
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
 allowed_origins = [
-    "http://localhost:3002",
-    "http://127.0.0.1:3002",
+    "https://frontend-roan-omega-94.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "http://localhost:8001",
     "http://127.0.0.1:8001",
     "http://localhost:5173",
@@ -55,6 +59,14 @@ class ReviewRequest(BaseModel):
     review_status: Literal["approved", "rejected", "request_changes"]
     reviewer_comment: str = ""
 
+class IssueReviewRequest(BaseModel):
+    decision: Literal["accepted", "rejected", "request_changes"]
+    comment: str = ""
+    correction: str = ""
+
+
+class ReopenRequest(BaseModel):
+    reason: str = ""
 
 @app.get("/")
 def home():
@@ -73,9 +85,8 @@ def health_check():
 
 
 @app.get("/brand")
-def get_brand():
+def get_brand(current_user=Depends(get_current_user)):
     return get_brand_profile()
-
 
 @app.post("/analyze")
 def analyze(
@@ -169,25 +180,43 @@ def review_report(
 
             report = cursor.fetchone()
 
-            if report is None:
+            if (
+                request.review_status in ("rejected", "request_changes")
+                and not request.reviewer_comment.strip()
+            ):
                 raise HTTPException(
-                    status_code=404,
-                    detail="Report not found"
+                    status_code=400,
+                    detail="A comment is required for this decision."
                 )
 
             cursor.execute("""
-    UPDATE reports
-    SET review_status = %s,
-        reviewer_comment = %s,
-        reviewer_id = %s,
-        reviewed_at = NOW()
-    WHERE id = %s
-""", (
-    request.review_status,
-    request.reviewer_comment,
-    current_user["id"],
-    report_id
-))
+                UPDATE reports
+                SET review_status = %s,
+                    reviewer_comment = %s,
+                    reviewer_id = %s,
+                    reviewed_at = NOW()
+                WHERE id = %s
+            """, (
+                request.review_status,
+                request.reviewer_comment,
+                current_user["id"],
+                report_id
+            ))
+
+            cursor.execute("""
+                INSERT INTO review_history (
+                    report_id,
+                    reviewer_id,
+                    action,
+                    comment
+                )
+                VALUES (%s, %s, %s, %s)
+            """, (
+                report_id,
+                current_user["id"],
+                request.review_status,
+                request.reviewer_comment
+            ))
 
     return {
         "message": "Review decision saved successfully",
@@ -244,3 +273,243 @@ def get_admin_stats(
         }
     }
 
+@app.post("/reports/{report_id}/issues/{issue_index}/review")
+def review_issue(
+    report_id: int,
+    issue_index: int,
+    request: IssueReviewRequest,
+    current_user: dict = Depends(
+        require_roles("reviewer", "admin")
+    )
+):
+    if issue_index < 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid issue index."
+        )
+
+    if (
+        request.decision in ("rejected", "request_changes")
+        and not request.comment.strip()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="A comment is required for this decision."
+        )
+
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT result_json, review_status
+                FROM reports
+                WHERE id = %s
+            """, (report_id,))
+
+            report = cursor.fetchone()
+
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found."
+                )
+
+            if report["review_status"] == "pending":
+                pass
+            elif report["review_status"] in (
+                "approved", "rejected", "request_changes"
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Reopen this report before reviewing issues."
+                )
+
+            result = json.loads(report["result_json"])
+            issues = result.get("issues", [])
+
+            if issue_index >= len(issues):
+                raise HTTPException(
+                    status_code=404,
+                    detail="Issue not found."
+                )
+
+            cursor.execute("""
+                INSERT INTO issue_reviews (
+                    report_id,
+                    issue_index,
+                    reviewer_id,
+                    decision,
+                    comment,
+                    correction
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id, created_at
+            """, (
+                report_id,
+                issue_index,
+                current_user["id"],
+                request.decision,
+                request.comment,
+                request.correction
+            ))
+
+            saved = cursor.fetchone()
+
+    return {
+        "message": "Issue decision saved successfully.",
+        "review_id": saved["id"],
+        "report_id": report_id,
+        "issue_index": issue_index,
+        "decision": request.decision,
+        "created_at": saved["created_at"]
+    }
+
+@app.post("/reports/{report_id}/reopen")
+def reopen_report(
+    report_id: int,
+    request: ReopenRequest,
+    current_user: dict = Depends(
+        require_roles("reviewer", "admin")
+    )
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT review_status
+                FROM reports
+                WHERE id = %s
+            """, (report_id,))
+
+            report = cursor.fetchone()
+
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found."
+                )
+
+            if report["review_status"] not in (
+                "approved", "rejected", "request_changes"
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Only completed reports can be reopened."
+                )
+
+            cursor.execute("""
+                UPDATE reports
+                SET review_status = 'pending',
+                    reviewer_comment = '',
+                    reviewer_id = NULL,
+                    reviewed_at = NULL
+                WHERE id = %s
+            """, (report_id,))
+
+            cursor.execute("""
+                INSERT INTO review_history (
+                    report_id,
+                    reviewer_id,
+                    action,
+                    comment
+                )
+                VALUES (%s, %s, 'reopened', %s)
+            """, (
+                report_id,
+                current_user["id"],
+                request.reason
+            ))
+
+    return {
+        "message": "Report reopened successfully.",
+        "report_id": report_id,
+        "review_status": "pending"
+    }
+
+@app.get("/reports/{report_id}/history")
+def get_review_history(
+    report_id: int,
+    current_user: dict = Depends(
+        require_roles("reviewer", "admin")
+    )
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                "SELECT id FROM reports WHERE id = %s",
+                (report_id,)
+            )
+
+            if cursor.fetchone() is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found."
+                )
+
+            cursor.execute("""
+                SELECT
+                    rh.id,
+                    rh.action,
+                    rh.comment,
+                    rh.created_at,
+                    rh.reviewer_id,
+                    u.name AS reviewer_name
+                FROM review_history rh
+                LEFT JOIN users u ON u.id = rh.reviewer_id
+                WHERE rh.report_id = %s
+                ORDER BY rh.created_at DESC, rh.id DESC
+            """, (report_id,))
+
+            history = cursor.fetchall()
+
+    return {
+        "report_id": report_id,
+        "total_decisions": len(history),
+        "history": history
+    }
+
+@app.get("/reports/{report_id}/issues/reviews")
+def get_issue_reviews(
+    report_id: int,
+    current_user: dict = Depends(
+        require_roles("reviewer", "admin")
+    )
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                "SELECT id FROM reports WHERE id = %s",
+                (report_id,)
+            )
+
+            if cursor.fetchone() is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found."
+                )
+
+            cursor.execute("""
+                SELECT
+                    ir.id,
+                    ir.issue_index,
+                    ir.decision,
+                    ir.comment,
+                    ir.correction,
+                    ir.created_at,
+                    ir.reviewer_id,
+                    u.name AS reviewer_name
+                FROM issue_reviews ir
+                LEFT JOIN users u ON u.id = ir.reviewer_id
+                WHERE ir.report_id = %s
+                ORDER BY ir.created_at DESC, ir.id DESC
+            """, (report_id,))
+
+            reviews = cursor.fetchall()
+
+    return {
+        "report_id": report_id,
+        "total_reviews": len(reviews),
+        "reviews": reviews
+    }

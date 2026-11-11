@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { getSubmissionViaApi } from "@/lib/api";
-import type { Submission } from "@/lib/types";
+import {
+  getSubmissionViaApi,
+  getReviewHistoryViaApi,
+  getIssueReviewsViaApi,
+} from "@/lib/api";
+import type {
+  Submission,
+  BackendReviewHistory,
+  BackendIssueReview,
+} from "@/lib/types";
 import {
   ArrowLeft,
   ClipboardCheck,
@@ -46,7 +54,9 @@ export const Route = createFileRoute("/reports/$id")({
 
 function ReportDetailPage() {
   const { id } = useParams({ from: Route.id });
-
+const [reviewHistory, setReviewHistory] = useState<BackendReviewHistory[]>([]);
+const [issueReviews, setIssueReviews] = useState<BackendIssueReview[]>([]);
+const [historyLoaded, setHistoryLoaded] = useState(false);
 const [submission, setSubmission] = useState<Submission | null>(null);
 const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
@@ -73,6 +83,39 @@ useEffect(() => {
 
   void loadSubmission();
 }, [id]);
+
+useEffect(() => {
+  let active = true;
+
+  async function loadReviewHistory() {
+    try {
+      const [historyResult, issueResult] = await Promise.allSettled([
+        getReviewHistoryViaApi(id),
+        getIssueReviewsViaApi(id),
+      ]);
+
+      if (!active) return;
+
+      if (
+        historyResult.status === "fulfilled" &&
+        issueResult.status === "fulfilled"
+      ) {
+        setReviewHistory(historyResult.value);
+        setIssueReviews(issueResult.value);
+        setHistoryLoaded(true);
+      }
+    } catch {
+      // History is optional for users without reviewer/admin access.
+    }
+  }
+
+  void loadReviewHistory();
+
+  return () => {
+    active = false;
+  };
+}, [id]);
+
 if (loading) {
   return (
     <div className="mx-auto max-w-3xl py-10 text-center">
