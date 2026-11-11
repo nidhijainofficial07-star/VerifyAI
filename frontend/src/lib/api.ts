@@ -274,47 +274,82 @@ function mapConfidence(status: string) {
 }
 
 
+
 function findIssueMatch(
   issue: BackendIssue,
   content: string
 ): { originalText: string; matchIndex: number } {
-  let searchText = "";
+  const findInContent = (
+    searchText: string
+  ): { originalText: string; matchIndex: number } | null => {
+    if (!searchText) return null;
 
-  if (issue.type === "price_mismatch") {
-    const priceMatch = issue.message.match(/₹\s*[\d,]+/);
-    searchText = priceMatch?.[0] ?? "";
-  }
-
-  if (issue.type === "unsupported_claim") {
-    const claimMatch = issue.message.match(/claim\s+'([^']+)'/i);
-
-    // Use the exact claim from the message when available.
-    if (claimMatch?.[1]) {
-      searchText = claimMatch[1];
-    } else {
-      // Generic productivity messages: use the guideline's claim.
-      searchText =
-        issue.evidence_reference?.guideline_rule?.match(/'([^']+)'/)?.[1] ??
-        "";
-    }
-  }
-
-  if (searchText) {
     const matchIndex = content
       .toLowerCase()
       .indexOf(searchText.toLowerCase());
 
-    if (matchIndex !== -1) {
-      return {
-        originalText: content.slice(
-          matchIndex,
-          matchIndex + searchText.length
-        ),
+    if (matchIndex === -1) return null;
+
+    return {
+      originalText: content.slice(
         matchIndex,
-      };
+        matchIndex + searchText.length
+      ),
+      matchIndex,
+    };
+  };
+
+  // 1. Price mismatch
+  if (issue.type === "price_mismatch") {
+    const priceMatch = issue.message.match(/₹\s*[\d,]+(?:\.\d+)?/);
+    const result = findInContent(priceMatch?.[0] ?? "");
+
+    if (result) return result;
+  }
+
+  // 2. Unsupported claims explicitly mentioned in the message
+  if (issue.type === "unsupported_claim") {
+    const claimMatch = issue.message.match(/claim\s+'([^']+)'/i);
+
+    if (claimMatch?.[1]) {
+      const result = findInContent(claimMatch[1]);
+
+      if (result) return result;
+    }
+
+    // 3. Find claims directly in the original content
+    // when the backend message contains only a guideline explanation.
+    const claimPatterns = [
+      /\bguarante\w*.{0,50}\bperformance\b/i,
+      /\bperformance\b.{0,50}\bguarante\w*/i,
+      /\b(?:exceptional|outstanding|superior|unmatched|unparalleled)\s+performance\b/i,
+      /\b\d+(?:\.\d+)?\s*%\s*(?:productivity|improvement|increase|boost)/i,
+      /\b(?:improve|boost|increase|enhance|deliver|offer|provide)\b.{0,40}\bproductivity\b/i,
+      /\bno\.?\s*1\b.{0,60}\b(?:desk|product|brand|india)\b/i,
+    ];
+
+    for (const pattern of claimPatterns) {
+      const match = content.match(pattern);
+
+      if (match?.[0]) {
+        const result = findInContent(match[0]);
+
+        if (result) return result;
+      }
+    }
+
+    // 4. Last attempt: use the guideline's quoted claim
+    const guidelineClaim =
+      issue.evidence_reference?.guideline_rule?.match(/'([^']+)'/)?.[1];
+
+    if (guidelineClaim) {
+      const result = findInContent(guidelineClaim);
+
+      if (result) return result;
     }
   }
 
+  // No exact match found
   return {
     originalText: issue.message,
     matchIndex: -1,
