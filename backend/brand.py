@@ -8,7 +8,6 @@ def get_brand_profile():
     with get_connection() as connection:
         with connection.cursor() as cursor:
 
-            # Fetch brand
             cursor.execute("""
                 SELECT brand_id, brand_name
                 FROM brands
@@ -20,7 +19,6 @@ def get_brand_profile():
             if not brand:
                 raise RuntimeError("SmartDesk brand not found in database.")
 
-            # Fetch active approved product
             cursor.execute("""
                 SELECT *
                 FROM brand_products
@@ -35,7 +33,6 @@ def get_brand_profile():
             if not product:
                 raise RuntimeError("No active approved product found.")
 
-            # Fetch active guidelines
             cursor.execute("""
                 SELECT *
                 FROM brand_guidelines
@@ -46,9 +43,9 @@ def get_brand_profile():
 
             guidelines = cursor.fetchall()
 
-            # Fetch active terminology
             cursor.execute("""
-                SELECT preferred
+                SELECT preferred, restricted, alternative,
+                       source_title, version, id
                 FROM brand_terminology
                 WHERE brand_id = %s
                   AND active = TRUE
@@ -63,10 +60,8 @@ def get_brand_profile():
         approved_price = int(approved_price)
 
     currency = product["currency"]
-
     currency_symbol = "₹" if currency == "INR" else currency
 
-    # Product evidence reference
     product_reference = {
         "evidence_id": f"brand_products:{product['id']}",
         "product_id": product["id"],
@@ -76,17 +71,21 @@ def get_brand_profile():
         "approved_value": f"{currency_symbol}{approved_price:,}"
     }
 
-    # Extract restricted claims and their database references
     restricted_claims = []
     claim_references = {}
 
+    # Extract quoted claims from active guidelines
     for guideline in guidelines:
 
-        match = re.search(r"'([^']+)'", guideline["rule"])
+        matches = re.findall(
+            r"""['"]([^'"]+)['"]""",
+            guideline["rule"] or ""
+        )
 
-        if match:
-            claim = match.group(1)
-            restricted_claims.append(claim)
+        for claim in matches:
+
+            if claim not in restricted_claims:
+                restricted_claims.append(claim)
 
             claim_references[claim] = {
                 "evidence_id": f"brand_guidelines:{guideline['id']}",
@@ -100,10 +99,42 @@ def get_brand_profile():
                 "approved_value": "Supporting evidence required before approval"
             }
 
+    # Load restricted terminology as detectable claims
+    restricted_terminology = []
+
+    for row in terminology_rows:
+
+        restricted = row["restricted"]
+
+        if restricted:
+            restricted_terminology.append(restricted)
+
+            if restricted not in restricted_claims:
+                restricted_claims.append(restricted)
+
+            claim_references[restricted] = {
+                "evidence_id": f"brand_terminology:{row['id']}",
+                "terminology_id": row["id"],
+                "source_type": "restricted_terminology",
+                "source_title": row["source_title"],
+                "guideline_title": "Restricted Brand Terminology",
+                "guideline_rule": (
+                    f"Restricted term '{restricted}' should not be used. "
+                    f"Suggested alternative: {row['alternative'] or 'Use approved terminology.'}"
+                ),
+                "severity": "medium",
+                "version": row["version"],
+                "approved_value": row["alternative"] or ""
+            }
+
     approved_terminology = list(dict.fromkeys(
         [product_name]
         + list(product["specifications"] or [])
-        + [row["preferred"] for row in terminology_rows]
+        + [
+            row["preferred"]
+            for row in terminology_rows
+            if row["preferred"]
+        ]
     ))
 
     return {
@@ -121,6 +152,21 @@ def get_brand_profile():
         "approved_terminology": approved_terminology,
 
         "restricted_claims": restricted_claims,
+        "restricted_terminology": restricted_terminology,
+
+        "guidelines": [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "description": row["description"],
+                "category": row["category"],
+                "rule": row["rule"],
+                "severity": row["severity"],
+                "source_title": row["source_title"],
+                "version": row["version"]
+            }
+            for row in guidelines
+        ],
 
         "evidence_references": {
             "product_name": {
