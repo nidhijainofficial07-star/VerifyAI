@@ -68,6 +68,19 @@ export interface GuidelineDocument {
   uploadedAt: string;
 }
 
+export interface EvidenceReference {
+  evidence_id?: string;
+  source_type?: string;
+  source_title?: string;
+  version?: number;
+  approved_value?: string;
+  product_id?: number;
+  guideline_id?: number;
+  guideline_title?: string;
+  guideline_rule?: string;
+  severity?: Severity;
+}
+
 export interface Issue {
   id: string;
   title: string;
@@ -86,6 +99,7 @@ export interface Issue {
   /** For findings the engine cannot rewrite automatically. */
   suggestedAction: string | null;
   resolution: IssueResolution;
+  evidenceReference?: EvidenceReference;
   /** Replacement text when a reviewer edited the engine's suggestion. */
   resolvedText: string | null;
   resolvedAt: string | null;
@@ -145,6 +159,7 @@ export interface BackendIssue {
   message: string;
   evidence: string;
   suggestion: string;
+  evidence_reference?: EvidenceReference;
 }
 
 export interface BackendAnalysis {
@@ -162,6 +177,40 @@ export interface BackendReport {
   created_at: string;
   review_status: "pending" | "approved" | "rejected" | "request_changes";
   reviewer_comment: string;
+  reviewer_id?: number | null;
+  reviewed_at?: string | null;
+}
+
+export interface BackendIssueReview {
+  id: number;
+  issue_index: number;
+  decision: "accepted" | "rejected" | "request_changes";
+  comment: string;
+  correction: string;
+  created_at: string;
+  reviewer_id: number | null;
+  reviewer_name: string | null;
+}
+
+export interface BackendReviewHistory {
+  id: number;
+  action: "approved" | "rejected" | "request_changes" | "reopened";
+  comment: string;
+  created_at: string;
+  reviewer_id: number | null;
+  reviewer_name: string | null;
+}
+
+export interface BackendIssueReviewsResponse {
+  report_id: number;
+  total_reviews: number;
+  reviews: BackendIssueReview[];
+}
+
+export interface BackendReviewHistoryResponse {
+  report_id: number;
+  total_decisions: number;
+  history: BackendReviewHistory[];
 }
 
 export interface BackendReportsResponse {

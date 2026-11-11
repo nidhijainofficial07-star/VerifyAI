@@ -9,6 +9,10 @@ import type {
   BackendReport,
   BackendReportsResponse,
   Submission,
+  BackendIssueReview,
+  BackendIssueReviewsResponse,
+  BackendReviewHistory,
+  BackendReviewHistoryResponse,
 } from "./types";
 
 export interface AnalyzeRequest {
@@ -50,8 +54,9 @@ export interface AnalyzeApiResult {
 }
 
 const API_BASE_URL = (
-  import.meta.env["VITE_API_BASE_URL"] || "http://127.0.0.1:8000"
-).replace(/\/$/, "");
+  import.meta.env["VITE_API_BASE_URL"] ||
+  "https://verityai-backend-bsbo.onrender.com"
+).replace(/\/+$/, "");
 
 export function saveAuthToken(token: string): void {
   sessionStorage.setItem("verityai_token", token);
@@ -265,6 +270,7 @@ function mapConfidence(status: string) {
   }
 }
 
+
 function findIssueMatch(
   issue: BackendIssue,
   content: string
@@ -278,7 +284,16 @@ function findIssueMatch(
 
   if (issue.type === "unsupported_claim") {
     const claimMatch = issue.message.match(/claim\s+'([^']+)'/i);
-    searchText = claimMatch?.[1] ?? "";
+
+    // Use the exact claim from the message when available.
+    if (claimMatch?.[1]) {
+      searchText = claimMatch[1];
+    } else {
+      // Generic productivity messages: use the guideline's claim.
+      searchText =
+        issue.evidence_reference?.guideline_rule?.match(/'([^']+)'/)?.[1] ??
+        "";
+    }
   }
 
   if (searchText) {
@@ -321,8 +336,13 @@ function mapIssue(
     originalText: match.originalText,
     explanation: backendIssue.message,
     approvedValue: backendIssue.evidence,
-    evidenceSource: "SmartDesk brand profile",
-    matchIndex: match.matchIndex,
+evidenceSource:
+  backendIssue.evidence_reference?.source_title ??
+  "SmartDesk brand profile",
+...(backendIssue.evidence_reference && {
+  evidenceReference: backendIssue.evidence_reference,
+}),
+matchIndex: match.matchIndex,
     suggestedCorrection: null,
     suggestedAction: backendIssue.suggestion,
     resolution: "pending",
@@ -535,4 +555,105 @@ export async function submitReviewViaApi(
       )
     );
   }
+}
+
+// ISSUE-LEVEL REVIEW
+
+export async function submitIssueReviewViaApi(
+  reportId: string,
+  issueIndex: number,
+  decision: "accepted" | "rejected" | "request_changes",
+  comment: string,
+  correction: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}/issues/${issueIndex}/review`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        decision,
+        comment,
+        correction,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Issue review failed (${response.status}).`
+      )
+    );
+  }
+}
+
+// REOPEN REPORT
+
+export async function reopenReportViaApi(
+  reportId: string,
+  reason: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}/reopen`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Could not reopen report (${response.status}).`
+      )
+    );
+  }
+}
+
+// REVIEW HISTORY
+
+export async function getReviewHistoryViaApi(
+  reportId: string
+): Promise<BackendReviewHistory[]> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}/history`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Could not load review history (${response.status}).`
+      )
+    );
+  }
+
+  const data: BackendReviewHistoryResponse = await response.json();
+  return data.history;
+}
+
+// ISSUE REVIEW HISTORY
+
+export async function getIssueReviewsViaApi(
+  reportId: string
+): Promise<BackendIssueReview[]> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}/issues/reviews`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Could not load issue reviews (${response.status}).`
+      )
+    );
+  }
+
+  const data: BackendIssueReviewsResponse = await response.json();
+  return data.reviews;
 }
