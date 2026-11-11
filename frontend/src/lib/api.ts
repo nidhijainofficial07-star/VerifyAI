@@ -361,7 +361,14 @@ function mapIssue(
   index: number,
   content: string
 ): Issue {
-  const match = findIssueMatch(backendIssue, content);
+    const match = findIssueMatch(backendIssue, content);
+
+  console.log("VerityAI issue mapping:", {
+    content,
+    backendMessage: backendIssue.message,
+    matchedText: match.originalText,
+    matchIndex: match.matchIndex,
+  });
 
   return {
     id: `issue_${index + 1}`,
