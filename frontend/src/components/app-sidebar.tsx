@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["creator", "reviewer", "admin"] },
-  { title: "Brand Knowledge", url: "/brand-knowledge", icon: BookOpenText, roles: ["creator", "admin"] },
+  { title: "Brand Knowledge", url: "/brand-knowledge", icon: BookOpenText, roles: ["creator", "reviewer", "admin"] },
   { title: "Content Analyzer", url: "/analyzer", icon: ScanSearch, roles: ["creator"] },
   { title: "Compliance Reports", url: "/reports", icon: FileSearch, roles: ["creator", "reviewer", "admin"] },
   { title: "Review Center", url: "/review", icon: ClipboardCheck, roles: ["reviewer", "admin"] },
