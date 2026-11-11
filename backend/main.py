@@ -4,6 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Literal
 
+from brand_routes import router as brand_router
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ app = FastAPI(
 create_tables()
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(brand_router)
 # CORS configuration
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 
@@ -83,9 +85,8 @@ def health_check():
 
 
 @app.get("/brand")
-def get_brand():
+def get_brand(current_user=Depends(get_current_user)):
     return get_brand_profile()
-
 
 @app.post("/analyze")
 def analyze(

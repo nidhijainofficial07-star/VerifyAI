@@ -13,6 +13,9 @@ import type {
   BackendIssueReviewsResponse,
   BackendReviewHistory,
   BackendReviewHistoryResponse,
+  BrandGuideline,
+  ProductFact,
+  TerminologyEntry,
 } from "./types";
 
 export interface AnalyzeRequest {
@@ -656,4 +659,335 @@ export async function getIssueReviewsViaApi(
 
   const data: BackendIssueReviewsResponse = await response.json();
   return data.reviews;
+}
+
+// ==========================================
+// BRAND KNOWLEDGE API
+// ==========================================
+
+interface BackendGuideline {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  rule: string;
+  severity: Severity;
+  active: boolean;
+  created_at: string | null;
+  version: number;
+}
+
+interface BackendFact {
+  id: string;
+  product_name: string;
+  approved_price: number;
+  currency: string;
+  specifications: string[];
+  approved_description: string;
+  updated_at: string | null;
+  version: number;
+}
+
+interface BackendTerminology {
+  id: string;
+  preferred: string;
+  restricted: string;
+  alternative: string;
+  version: number;
+}
+
+function mapGuideline(data: BackendGuideline): BrandGuideline {
+  return {
+    id: String(data.id),
+    title: data.title,
+    description: data.description ?? "",
+    category: data.category ?? "General",
+    rule: data.rule,
+    severity: data.severity,
+    active: data.active,
+    createdAt: data.created_at ?? new Date().toISOString(),
+  };
+}
+
+function mapFact(data: BackendFact): ProductFact {
+  const currencySymbols: Record<string, string> = {
+    INR: "₹",
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+  };
+
+  const symbol = currencySymbols[data.currency] ?? `${data.currency} `;
+
+  return {
+    id: String(data.id),
+    productName: data.product_name,
+    approvedPrice: `${symbol}${Number(data.approved_price).toLocaleString("en-IN")}`,
+    specification: (data.specifications ?? []).join("; "),
+    approvedDescription: data.approved_description ?? "",
+    updatedAt: data.updated_at ?? new Date().toISOString(),
+  };
+}
+
+function mapTerminology(
+  data: BackendTerminology
+): TerminologyEntry {
+  return {
+    id: String(data.id),
+    preferred: data.preferred,
+    restricted: data.restricted,
+    alternative: data.alternative ?? "",
+  };
+}
+
+function getPricePayload(price: string): {
+  approved_price: number;
+  currency: string;
+} {
+  const trimmed = price.trim();
+
+  let currency = "INR";
+
+  if (trimmed.includes("$")) currency = "USD";
+  else if (trimmed.includes("€")) currency = "EUR";
+  else if (trimmed.includes("£")) currency = "GBP";
+
+  const numericPrice = Number(trimmed.replace(/[^\d.]/g, ""));
+
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+    throw new Error("Enter a valid approved price.");
+  }
+
+  return {
+    approved_price: numericPrice,
+    currency,
+  };
+}
+
+// -----------------------------
+// GET BRAND KNOWLEDGE
+// -----------------------------
+
+export async function getBrandGuidelinesViaApi(): Promise<BrandGuideline[]> {
+  const response = await authenticatedFetch("/brand/guidelines");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load brand guidelines.")
+    );
+  }
+
+  const data: { guidelines: BackendGuideline[] } =
+    await response.json();
+
+  return data.guidelines.map(mapGuideline);
+}
+
+export async function getBrandFactsViaApi(): Promise<ProductFact[]> {
+  const response = await authenticatedFetch("/brand/facts");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load product facts.")
+    );
+  }
+
+  const data: { facts: BackendFact[] } = await response.json();
+
+  return data.facts.map(mapFact);
+}
+
+export async function getBrandTerminologyViaApi(): Promise<TerminologyEntry[]> {
+  const response = await authenticatedFetch("/brand/terminology");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load terminology.")
+    );
+  }
+
+  const data: { terminology: BackendTerminology[] } =
+    await response.json();
+
+  return data.terminology.map(mapTerminology);
+}
+
+// -----------------------------
+// GUIDELINE CREATE / UPDATE
+// -----------------------------
+
+export async function saveBrandGuidelineViaApi(
+  guideline: Omit<BrandGuideline, "id" | "createdAt">,
+  id?: string
+): Promise<BrandGuideline> {
+  const response = await authenticatedFetch(
+    id
+      ? `/brand/guidelines/${encodeURIComponent(id)}`
+      : "/brand/guidelines",
+    {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: guideline.title,
+        description: guideline.description,
+        category: guideline.category,
+        rule: guideline.rule,
+        severity: guideline.severity,
+        active: guideline.active,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not save guideline.")
+    );
+  }
+
+  const data: { guideline: BackendGuideline } =
+    await response.json();
+
+  return mapGuideline(data.guideline);
+}
+
+export async function setBrandGuidelineActiveViaApi(
+  id: string,
+  active: boolean
+): Promise<BrandGuideline> {
+  const response = await authenticatedFetch(
+    `/brand/guidelines/${encodeURIComponent(id)}/active`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not update guideline status.")
+    );
+  }
+
+  const data: { guideline: BackendGuideline } =
+    await response.json();
+
+  return mapGuideline(data.guideline);
+}
+
+export async function deleteBrandGuidelineViaApi(
+  id: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/brand/guidelines/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not delete guideline.")
+    );
+  }
+}
+
+// -----------------------------
+// PRODUCT FACT CREATE / UPDATE
+// -----------------------------
+
+export async function saveBrandFactViaApi(
+  fact: Omit<ProductFact, "id" | "updatedAt">,
+  id?: string
+): Promise<ProductFact> {
+  const price = getPricePayload(fact.approvedPrice);
+
+  const response = await authenticatedFetch(
+    id
+      ? `/brand/facts/${encodeURIComponent(id)}`
+      : "/brand/facts",
+    {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product_name: fact.productName,
+        ...price,
+        specification: fact.specification,
+        approved_description: fact.approvedDescription,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not save product facts.")
+    );
+  }
+
+  const data: { fact: BackendFact } = await response.json();
+
+  return mapFact(data.fact);
+}
+
+export async function deleteBrandFactViaApi(
+  id: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/brand/facts/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not delete product fact.")
+    );
+  }
+}
+
+// -----------------------------
+// TERMINOLOGY CREATE / UPDATE
+// -----------------------------
+
+export async function saveBrandTerminologyViaApi(
+  term: Omit<TerminologyEntry, "id">,
+  id?: string
+): Promise<TerminologyEntry> {
+  const response = await authenticatedFetch(
+    id
+      ? `/brand/terminology/${encodeURIComponent(id)}`
+      : "/brand/terminology",
+    {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preferred: term.preferred,
+        restricted: term.restricted,
+        alternative: term.alternative,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not save terminology.")
+    );
+  }
+
+  const data: { terminology: BackendTerminology } =
+    await response.json();
+
+  return mapTerminology(data.terminology);
+}
+
+export async function deleteBrandTerminologyViaApi(
+  id: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/brand/terminology/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not delete terminology.")
+    );
+  }
 }
