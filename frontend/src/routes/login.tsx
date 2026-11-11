@@ -93,11 +93,14 @@ function LoginPage() {
           </form>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            New to VerityAI?{" "}
-            <span className="font-medium text-muted-foreground">
-  Creator registration coming soon
-</span>
-          </p>
+  New to VerityAI?{" "}
+  <Link
+    to="/register"
+    className="font-medium text-primary hover:underline"
+  >
+    Create an account
+  </Link>
+</p>
         </CardContent>
       </Card>
     </div>
