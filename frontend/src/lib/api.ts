@@ -151,6 +151,62 @@ export async function registerCreatorViaApi(
   return data;
 }
 
+
+
+export async function submitReviewerRequestViaApi(
+  name: string,
+  email: string,
+  password: string
+) {
+  const response = await fetch(`${API_BASE_URL}/auth/reviewer-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Reviewer request failed.")
+    );
+  }
+
+  return response.json();
+}
+
+export async function getReviewerRequestsViaApi() {
+  const response = await authenticatedFetch("/admin/reviewer-requests");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load reviewer requests.")
+    );
+  }
+
+  return response.json();
+}
+
+export async function decideReviewerRequestViaApi(
+  requestId: number,
+  decision: "approve" | "reject"
+) {
+  const response = await authenticatedFetch(
+    `/admin/reviewer-requests/${requestId}/decision`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not process reviewer request.")
+    );
+  }
+
+  return response.json();
+}
+
 export async function getCurrentUserViaApi(): Promise<AuthUser> {
   const response = await authenticatedFetch("/auth/me");
 

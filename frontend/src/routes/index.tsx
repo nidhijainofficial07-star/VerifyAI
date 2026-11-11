@@ -1,14 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
+
 import {
   createReviewerViaApi,
   getAdminStatsViaApi,
   getReviewersViaApi,
   deleteReviewerViaApi,
   getSubmissionsViaApi,
+  getReviewerRequestsViaApi,
+  decideReviewerRequestViaApi,
   type AdminStats,
   type Reviewer,
 } from "@/lib/api";
+
 import type { Submission } from "@/lib/types";
 import {
   AlertTriangle,
@@ -28,6 +32,15 @@ import { Button } from "@/components/ui/button";
 import { ComplianceBadge, ReviewBadge } from "@/components/status-badges";
 import { TrendChart } from "@/components/trend-chart";
 import { EmptyState } from "@/components/empty-state";
+
+type ReviewerRequest = {
+  id: number;
+  name: string;
+  email: string;
+  status: "pending";
+  created_at: string;
+};
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -78,6 +91,13 @@ function StatCard({
 }
 
 function AdminDashboard({ name }: { name: string }) {
+
+  const [reviewerRequests, setReviewerRequests] = useState<ReviewerRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsError, setRequestsError] = useState("");
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
+  const [requestMessage, setRequestMessage] = useState("");
+
   const [reviewerName, setReviewerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -127,9 +147,28 @@ const [reviewerSuccess, setReviewerSuccess] = useState("");
   }
 }
 
+  async function loadReviewerRequests() {
+    setRequestsLoading(true);
+    setRequestsError("");
+
+    try {
+      const data = await getReviewerRequestsViaApi();
+      setReviewerRequests(data.requests ?? []);
+    } catch (err) {
+      setRequestsError(
+        err instanceof Error
+          ? err.message
+          : "Could not load Reviewer requests."
+      );
+    } finally {
+      setRequestsLoading(false);
+    }
+  }
+
   useEffect(() => {
   void loadStats();
   void loadReviewers();
+  void loadReviewerRequests();
 }, []);
 
 async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
@@ -186,6 +225,47 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
     setRemovingReviewerId(null);
   }
 }
+
+  async function handleReviewerDecision(
+    requestId: number,
+    decision: "approve" | "reject"
+  ) {
+    const confirmed = window.confirm(
+      decision === "approve"
+        ? "Approve this Reviewer request?"
+        : "Reject this Reviewer request?"
+    );
+
+    if (!confirmed) return;
+
+    setProcessingRequestId(requestId);
+    setRequestsError("");
+    setRequestMessage("");
+
+    try {
+      const result = await decideReviewerRequestViaApi(
+        requestId,
+        decision
+      );
+
+      setRequestMessage(result.message);
+
+      await loadReviewerRequests();
+
+      if (decision === "approve") {
+        await loadReviewers();
+        await loadStats();
+      }
+    } catch (err) {
+      setRequestsError(
+        err instanceof Error
+          ? err.message
+          : "Could not process this request."
+      );
+    } finally {
+      setProcessingRequestId(null);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -294,6 +374,98 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5" />
+              Pending Reviewer Requests
+            </CardTitle>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void loadReviewerRequests()}
+              disabled={requestsLoading}
+            >
+              {requestsLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Review and approve or reject access requests.
+          </p>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {requestsError && (
+            <p className="text-sm text-destructive" role="alert">
+              {requestsError}
+            </p>
+          )}
+
+          {requestMessage && (
+            <p className="text-sm text-green-600" role="status">
+              {requestMessage}
+            </p>
+          )}
+
+          {requestsLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Loading requests...
+            </p>
+          ) : reviewerRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No pending Reviewer requests.
+            </p>
+          ) : (
+            <div className="divide-y">
+              {reviewerRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">{request.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {request.email}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Requested: {formatDateTime(request.created_at)}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      disabled={processingRequestId === request.id}
+                      onClick={() =>
+                        void handleReviewerDecision(request.id, "approve")
+                      }
+                    >
+                      {processingRequestId === request.id
+                        ? "Processing..."
+                        : "Approve"}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={processingRequestId === request.id}
+                      onClick={() =>
+                        void handleReviewerDecision(request.id, "reject")
+                      }
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

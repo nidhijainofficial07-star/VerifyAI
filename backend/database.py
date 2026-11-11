@@ -46,6 +46,40 @@ def create_tables():
             """)
 
             # -------------------------------------------------
+            # REVIEWER REGISTRATION REQUESTS
+            # -------------------------------------------------
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS reviewer_requests (
+                    id BIGSERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    password_hash TEXT,
+                    status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'approved', 'rejected')),
+                    reviewed_by BIGINT
+                        REFERENCES users(id) ON DELETE SET NULL,
+                    reviewed_at TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+
+            # Prevent duplicate pending requests for the same email.
+            cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                idx_one_pending_reviewer_request
+                ON reviewer_requests (LOWER(email))
+                WHERE status = 'pending'
+            """)
+
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS
+                idx_reviewer_requests_status
+                ON reviewer_requests(status, created_at DESC)
+            """)
+
+
+            # -------------------------------------------------
             # REPORTS
             # -------------------------------------------------
 
