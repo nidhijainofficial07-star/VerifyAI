@@ -716,10 +716,9 @@ if (reportsError) {
     0,
   );
 
-  const pendingReviews = submissions.filter(
-    (s) => s.reviewStatus === "pending_review"
-  ).length;
-
+  const approved = submissions.filter(
+  (s) => s.reviewStatus === "approved"
+).length;
   const completedReviews = isReviewer
   ? reviewerActivity.reduce(
       (sum, item) => sum + Number(item.total_reviews),
