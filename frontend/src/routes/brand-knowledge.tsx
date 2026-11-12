@@ -38,6 +38,7 @@ import {
   saveTerminology,
   toggleGuideline,
   useAppState,
+  openDocumentFile,
 } from "@/lib/store";
 import type {
   BrandGuideline,
@@ -1146,23 +1147,28 @@ function DocumentsTab() {
 
   const [dragging, setDragging] = useState(false);
 
-  const handleFiles = (files: FileList | null) => {
-    if (!canManage || !files?.length) return;
 
-    Array.from(files).forEach((file) => {
-      const ok = /\.(pdf|docx?|xlsx?|txt|md)$/i.test(file.name);
+const handleFiles = async (files: FileList | null) => {
+  if (!canManage || !files?.length) return;
 
-      if (!ok) {
-        toast.error(
-          `${file.name}: unsupported format. Upload PDF, DOCX, XLSX, TXT or MD.`
-        );
-        return;
-      }
+  for (const file of Array.from(files)) {
+    const ok = /\.(pdf|docx?|xlsx?|txt|md)$/i.test(file.name);
 
-      addDocument(file.name);
-      toast.success(`${file.name} uploaded — indexing started (demo)`);
-    });
-  };
+    if (!ok) {
+      toast.error(
+        `${file.name}: unsupported format. Upload PDF, DOCX, XLSX, TXT or MD.`
+      );
+      continue;
+    }
+
+    try {
+      await addDocument(file);
+      toast.success(`${file.name} uploaded successfully`);
+    } catch {
+      toast.error(`Could not save ${file.name}. Please try again.`);
+    }
+  }
+};
 
   return (
     <Card>
@@ -1232,7 +1238,23 @@ className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center
                   <FileUp className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{d.name}</p>
+                    <button
+  type="button"
+  className="block max-w-full truncate text-left text-sm font-medium hover:text-primary hover:underline"
+  onClick={async () => {
+    try {
+      await openDocumentFile(d.id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not open document."
+      );
+    }
+  }}
+>
+  {d.name}
+</button>
                     <p className="text-xs text-muted-foreground">
                       {d.sizeLabel} · {formatDateTime(d.uploadedAt)}
                     </p>

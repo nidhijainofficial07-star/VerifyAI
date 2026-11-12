@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, Sparkles, ScanSearch } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/analyzer")({
   head: () => ({
@@ -49,6 +50,14 @@ const CONTENT_TYPES: ContentType[] = [
 
 function AnalyzerPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+useEffect(() => {
+  if (user?.role === "reviewer") {
+    void navigate({ to: "/" });
+  }
+}, [user, navigate]);
+
   const [title, setTitle] = useState("");
   const [contentType, setContentType] = useState<ContentType>("Advertisement");
   const [content, setContent] = useState("");
@@ -104,6 +113,9 @@ function AnalyzerPage() {
     setAnalysing(false);
   }
 };
+if (user?.role === "reviewer") {
+  return null;
+}
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>

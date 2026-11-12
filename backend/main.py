@@ -91,7 +91,7 @@ def get_brand(current_user=Depends(get_current_user)):
 @app.post("/analyze")
 def analyze(
     request: ContentRequest,
-    current_user: dict = Depends(require_roles("creator"))
+    current_user: dict = Depends(require_roles("creator", "admin"))
 ):
     result = analyze_content(request.content)
     created_at = datetime.now(timezone.utc).isoformat()
@@ -467,6 +467,42 @@ def get_review_history(
         "report_id": report_id,
         "total_decisions": len(history),
         "history": history
+    }
+@app.get("/reviewer/activity")
+def get_reviewer_activity(
+    current_user: dict = Depends(require_roles("reviewer"))
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                WITH months AS (
+                    SELECT generate_series(
+                        DATE_TRUNC('month', CURRENT_DATE)
+                            - INTERVAL '5 months',
+                        DATE_TRUNC('month', CURRENT_DATE),
+                        INTERVAL '1 month'
+                    ) AS month
+                )
+                SELECT
+                    TO_CHAR(months.month, 'YYYY-MM') AS month,
+                    COUNT(rh.id) AS total_reviews
+                FROM months
+                LEFT JOIN review_history rh
+                    ON DATE_TRUNC('month', rh.created_at) = months.month
+                    AND rh.reviewer_id = %s
+                    AND rh.action IN (
+                        'approved',
+                        'rejected',
+                        'request_changes'
+                    )
+                GROUP BY months.month
+                ORDER BY months.month
+            """, (current_user["id"],))
+
+            activity = cursor.fetchall()
+
+    return {
+        "activity": activity
     }
 
 @app.get("/reports/{report_id}/issues/reviews")

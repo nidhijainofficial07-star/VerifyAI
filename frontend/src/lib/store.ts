@@ -198,12 +198,110 @@ export function deleteTerminology(id: string) {
   });
 }
 
-export function addDocument(name: string) {
+const DOCUMENT_DB = "verityai.documents.v1";
+const DOCUMENT_STORE = "documents";
+
+function openDocumentDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DOCUMENT_DB, 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains(DOCUMENT_STORE)) {
+        db.createObjectStore(DOCUMENT_STORE, { keyPath: "id" });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveDocumentFile(id: string, file: File): Promise<void> {
+  const db = await openDocumentDB();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(DOCUMENT_STORE, "readwrite");
+
+    transaction.objectStore(DOCUMENT_STORE).put({ id, file });
+
+    transaction.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error);
+    };
+
+    transaction.onabort = () => {
+      db.close();
+      reject(transaction.error);
+    };
+  });
+}
+
+
+export async function getDocumentFile(
+  id: string,
+): Promise<File | null> {
+  const db = await openDocumentDB();
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(DOCUMENT_STORE, "readonly");
+    const request = transaction.objectStore(DOCUMENT_STORE).get(id);
+
+    request.onsuccess = () => {
+      db.close();
+      resolve(request.result?.file ?? null);
+    };
+
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+}
+
+
+export async function openDocumentFile(id: string): Promise<void> {
+  const openedWindow = window.open("", "_blank");
+
+  if (!openedWindow) {
+    throw new Error("Pop-up blocked. Please allow pop-ups for this site.");
+  }
+
+  try {
+    const file = await getDocumentFile(id);
+
+    if (!file) {
+      throw new Error("Uploaded document not found.");
+    }
+
+    const url = URL.createObjectURL(file);
+    openedWindow.location.href = url;
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    openedWindow.close();
+    throw error;
+  }
+}
+
+
+
+export async function addDocument(file: File): Promise<void> {
+  const id = `doc_${Date.now()}`;
+
+  await saveDocumentFile(id, file);
+
   const doc: GuidelineDocument = {
-    id: `doc_${Date.now()}`,
-    name,
+    id,
+    name: file.name,
     status: "processing",
-    sizeLabel: "—",
+    sizeLabel: `${(file.size / 1024).toFixed(1)} KB`,
     uploadedAt: new Date().toISOString(),
   };
 
@@ -212,7 +310,6 @@ export function addDocument(name: string) {
     documents: [doc, ...state.documents],
   });
 
-  // Demo-only simulated indexing delay.
   if (typeof window !== "undefined") {
     window.setTimeout(() => {
       commit({

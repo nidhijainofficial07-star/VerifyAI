@@ -9,6 +9,8 @@ import {
   getSubmissionsViaApi,
   getReviewerRequestsViaApi,
   decideReviewerRequestViaApi,
+  getReviewerActivityViaApi,
+  type ReviewerMonthlyActivity,
   type AdminStats,
   type Reviewer,
 } from "@/lib/api";
@@ -612,6 +614,11 @@ function Dashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 const [reportsLoading, setReportsLoading] = useState(true);
 const [reportsError, setReportsError] = useState("");
+const [reviewerActivity, setReviewerActivity] = useState<
+  ReviewerMonthlyActivity[]
+>([]);
+const [activityLoading, setActivityLoading] = useState(false);
+const [activityError, setActivityError] = useState("");
 
 useEffect(() => {
   if (!user || user.role === "admin") return;
@@ -641,6 +648,30 @@ useEffect(() => {
       navigate({ to: "/login", replace: true });
     }
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+  if (user?.role !== "reviewer") return;
+
+  async function loadReviewerActivity() {
+    setActivityLoading(true);
+    setActivityError("");
+
+    try {
+      const data = await getReviewerActivityViaApi();
+      setReviewerActivity(data);
+    } catch (err) {
+      setActivityError(
+        err instanceof Error
+          ? err.message
+          : "Could not load reviewer activity."
+      );
+    } finally {
+      setActivityLoading(false);
+    }
+  }
+
+  void loadReviewerActivity();
+}, [user]);
 
   if (loading || !user) {
     return (
@@ -677,7 +708,7 @@ if (reportsError) {
 }
 
   const roleLabel = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-
+  const isReviewer = user.role === "reviewer";
   const totalChecks = submissions.length;
 
   const issuesDetected = submissions.reduce(
@@ -689,13 +720,28 @@ if (reportsError) {
     (s) => s.reviewStatus === "pending_review"
   ).length;
 
-  const approved = submissions.filter(
-    (s) => s.reviewStatus === "approved"
-  ).length;
+  const completedReviews = isReviewer
+  ? reviewerActivity.reduce(
+      (sum, item) => sum + Number(item.total_reviews),
+      0
+    )
+  : submissions.filter(
+      (s) => s.reviewStatus !== "pending_review"
+    ).length;
 
   const recent = [...submissions]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5);
+  .sort((a, b) => {
+    if (isReviewer) {
+      const aPending = a.reviewStatus === "pending_review";
+      const bPending = b.reviewStatus === "pending_review";
+
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+    }
+
+    return b.createdAt.localeCompare(a.createdAt);
+  })
+  .slice(0, 5);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
@@ -707,37 +753,67 @@ if (reportsError) {
   <p className="mt-1 text-sm text-muted-foreground">
     You are logged in as{" "}
     <span className="font-medium text-primary">{roleLabel}</span>.
-    Every brand decision deserves to be verified.
+    {isReviewer
+  ? "Review submitted content, verify issues, and record your decisions."
+  : "Every brand decision deserves to be verified."}
   </p>
 </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-        <StatCard icon={ShieldCheck} label="Total Content Checks" value={totalChecks} hint="All-time analyses" />
-        <StatCard icon={AlertTriangle} label="Issues Detected" value={issuesDetected} hint="Across all content" />
-        <StatCard icon={Clock} label="Pending Reviews" value={pendingReviews} hint="Waiting on a human decision" />
-        <StatCard icon={CheckCircle2} label="Approved Content" value={approved} hint="Cleared for publication" />
-      </div>
+      {isReviewer ? (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+    <StatCard
+      icon={Clock}
+      label="Pending Reviews"
+      value={pendingReviews}
+      hint="Waiting for a review decision"
+    />
+    <StatCard
+      icon={CheckCircle2}
+      label="Completed Reviews"
+      value={completedReviews}
+      hint="Decisions already recorded"
+    />
+  </div>
+) : (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+    <StatCard icon={ShieldCheck} label="Total Content Checks" value={totalChecks} hint="All-time analyses" />
+    <StatCard icon={AlertTriangle} label="Issues Detected" value={issuesDetected} hint="Across all content" />
+    <StatCard icon={Clock} label="Pending Reviews" value={pendingReviews} hint="Waiting on a human decision" />
+    <StatCard icon={CheckCircle2} label="Approved Content" value={approved} hint="Cleared for publication" />
+  </div>
+)}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Recent Activity</CardTitle>
+            <CardTitle className="text-base">
+  {isReviewer ? "Your Review Queue" : "Recent Activity"}
+</CardTitle>
           </CardHeader>
           <CardContent>
             {recent.length === 0 ? (
-              <EmptyState
-                icon={FileSearch}
-                title="No content analysed yet"
-                description="Submit your first piece of content in the Content Analyzer to see activity here."
-                action={
-                  <Button asChild>
-                    <Link to="/analyzer">
-                      <ScanSearch className="h-4 w-4" /> Analyse content
-                    </Link>
-                  </Button>
-                }
-              />
-            ) : (
+  <EmptyState
+    icon={isReviewer ? ClipboardCheck : FileSearch}
+    title={isReviewer ? "No pending reviews" : "No content analysed yet"}
+    description={
+      isReviewer
+        ? "You're all caught up! New submissions will appear here when they need your attention."
+        : "Submit your first piece of content in the Content Analyzer to see activity here."
+    }
+    action={
+      <Button asChild>
+        <Link to={isReviewer ? "/review" : "/analyzer"}>
+          {isReviewer ? (
+            <ClipboardCheck className="h-4 w-4" />
+          ) : (
+            <ScanSearch className="h-4 w-4" />
+          )}
+          {isReviewer ? "Open Review Center" : "Analyse content"}
+        </Link>
+      </Button>
+    }
+  />
+) : (
               <ul className="divide-y">
                 {recent.map((s) => (
                   <li
@@ -746,12 +822,16 @@ if (reportsError) {
 >
                     <div className="min-w-0 flex-1">
                       <Link
-                        to="/reports/$id"
-                        params={{ id: s.id }}
-                        className="block break-words text-sm font-medium hover:text-primary hover:underline"
-                      >
-                        {s.title}
-                      </Link>
+  to={
+    isReviewer && s.reviewStatus === "pending_review"
+      ? "/review/$id"
+      : "/reports/$id"
+  }
+  params={{ id: s.id }}
+  className="block break-words text-sm font-medium hover:text-primary hover:underline"
+>
+  {s.title}
+</Link>
                       <p className="text-xs text-muted-foreground">
                         {formatDateTime(s.createdAt)} · {s.contentType}
                       </p>
@@ -773,46 +853,136 @@ if (reportsError) {
         </Card>
 
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <Button asChild className="justify-between">
-                <Link to="/analyzer">
-                  <span className="flex items-center gap-2">
-                    <ScanSearch className="h-4 w-4" /> Analyse New Content
-                  </span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-between">
-                <Link to="/brand-knowledge">
-                  <span className="flex items-center gap-2">
-                    <BookOpenText className="h-4 w-4" /> Manage Brand Knowledge
-                  </span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-between">
-                <Link to="/review">
-                  <span className="flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4" /> Review Pending Issues
-                  </span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {!isReviewer && (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-base">Quick Actions</CardTitle>
+    </CardHeader>
+    <CardContent className="flex flex-col gap-2">
+      <Button asChild className="justify-between">
+        <Link to="/analyzer">
+          <span className="flex items-center gap-2">
+            <ScanSearch className="h-4 w-4" /> Analyse New Content
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+      <Button asChild variant="outline" className="justify-between">
+        <Link to="/brand-knowledge">
+          <span className="flex items-center gap-2">
+            <BookOpenText className="h-4 w-4" /> Manage Brand Knowledge
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+      <Button asChild variant="outline" className="justify-between">
+        <Link to="/review">
+          <span className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4" /> Review Pending Issues
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+    </CardContent>
+  </Card>
+)}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Content Compliance Trend</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TrendChart />
-            </CardContent>
-          </Card>
+          {isReviewer ? (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-base">
+        Your Review Activity
+      </CardTitle>
+      <p className="text-sm text-muted-foreground">
+        Completed reviews over the last six months
+      </p>
+    </CardHeader>
+
+    <CardContent>
+      {activityLoading ? (
+        <p className="text-sm text-muted-foreground">
+          Loading your activity...
+        </p>
+      ) : activityError ? (
+        <p className="text-sm text-destructive">
+          {activityError}
+        </p>
+      ) : reviewerActivity.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No activity data available yet.
+        </p>
+      ) : (
+        <>
+          <div className="mb-4">
+            <p className="text-2xl font-semibold tabular-nums">
+              {reviewerActivity.reduce(
+                (sum, item) => sum + Number(item.total_reviews),
+                0
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Total completed reviews
+            </p>
+          </div>
+
+          <div className="flex h-40 items-end justify-between gap-2">
+            {reviewerActivity.map((item) => {
+              const count = Number(item.total_reviews);
+              const maxCount = Math.max(
+                ...reviewerActivity.map((entry) =>
+                  Number(entry.total_reviews)
+                ),
+                1
+              );
+
+              const height =
+                count === 0 ? 0 : Math.max((count / maxCount) * 100, 8);
+
+              const monthLabel = new Date(
+                `${item.month}-01T00:00:00`
+              ).toLocaleDateString("en-IN", {
+                month: "short",
+              });
+
+              return (
+                <div
+                  key={item.month}
+                  className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
+                >
+                  <span className="text-xs font-medium tabular-nums">
+                    {count}
+                  </span>
+
+                  <div className="flex h-full w-full items-end justify-center">
+                    <div
+                      className="w-full max-w-10 rounded-t-md bg-primary transition-all"
+                      style={{ height: `${height}%` }}
+                    />
+                  </div>
+
+                  <span className="text-xs text-muted-foreground">
+                    {monthLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </CardContent>
+  </Card>
+) : (
+  <Card>
+    <CardHeader>
+      <CardTitle className="text-base">
+        Content Compliance Trend
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <TrendChart />
+    </CardContent>
+  </Card>
+)}
         </div>
       </div>
     </div>

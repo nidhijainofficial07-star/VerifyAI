@@ -736,7 +736,35 @@ export async function getReviewHistoryViaApi(
   const data: BackendReviewHistoryResponse = await response.json();
   return data.history;
 }
+// REVIEWER MONTHLY ACTIVITY
 
+export interface ReviewerMonthlyActivity {
+  month: string;
+  total_reviews: number;
+}
+
+interface ReviewerActivityResponse {
+  activity: ReviewerMonthlyActivity[];
+}
+
+export async function getReviewerActivityViaApi(): Promise<
+  ReviewerMonthlyActivity[]
+> {
+  const response = await authenticatedFetch("/reviewer/activity");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Could not load reviewer activity (${response.status}).`
+      )
+    );
+  }
+
+  const data: ReviewerActivityResponse = await response.json();
+
+  return data.activity;
+}
 // ISSUE REVIEW HISTORY
 
 export async function getIssueReviewsViaApi(
