@@ -277,48 +277,6 @@ function AppInfoCard() {
           Gemini integration, document processing and email notifications
           are not implemented.
         </p>
-
-        <div className="border-t pt-4">
-          <p className="mb-3 text-sm font-medium text-foreground">
-            Local demo data
-          </p>
-
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-fit">
-                <RotateCcw className="h-4 w-4" />
-                Reset local demo submissions
-              </Button>
-            </AlertDialogTrigger>
-
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Reset local demo submissions?
-                </AlertDialogTitle>
-
-                <AlertDialogDescription>
-                  This clears locally stored demo submissions only.
-                  It does not delete authenticated reports or records
-                  stored in the Neon database.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-
-                <AlertDialogAction
-                  onClick={() => {
-                    clearSubmissions();
-                    toast.success("Local demo submissions cleared");
-                  }}
-                >
-                  Reset
-                </AlertDialogAction>
-               </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
       </CardContent>
     </Card>
   );
