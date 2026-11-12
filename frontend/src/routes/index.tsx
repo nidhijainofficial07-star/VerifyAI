@@ -716,6 +716,10 @@ if (reportsError) {
     0,
   );
 
+  const pendingReviews = submissions.filter(
+  (s) => s.reviewStatus === "pending_review"
+).length;
+
   const approved = submissions.filter(
   (s) => s.reviewStatus === "approved"
 ).length;
