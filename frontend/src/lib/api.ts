@@ -614,6 +614,25 @@ export async function getReportsViaApi(): Promise<BackendReport[]> {
   return data.reports;
 }
 
+
+export async function deleteReportViaApi(
+  reportId: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}`,
+    { method: "DELETE" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        "Could not delete report."
+      )
+    );
+  }
+}
+
 // REVIEW SUBMISSION
 
 export async function submitReviewViaApi(
