@@ -933,14 +933,6 @@ if (reportsError) {
           <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>
-      <Button asChild variant="outline" className="justify-between">
-        <Link to="/review">
-          <span className="flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4" /> Review Submissions
-          </span>
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </Button>
     </CardContent>
   </Card>
 )}
