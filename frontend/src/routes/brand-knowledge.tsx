@@ -1284,12 +1284,20 @@ function BrandKnowledgePage() {
       </div>
 
       <Tabs defaultValue="guidelines">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger value="guidelines">Guidelines</TabsTrigger>
-          <TabsTrigger value="facts">Product Facts</TabsTrigger>
-          <TabsTrigger value="terminology">Terminology</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-        </TabsList>
+        <TabsList className="flex w-full justify-start gap-1 overflow-x-auto sm:grid sm:grid-cols-4">
+  <TabsTrigger value="guidelines" className="shrink-0 whitespace-nowrap">
+    Guidelines
+  </TabsTrigger>
+  <TabsTrigger value="facts" className="shrink-0 whitespace-nowrap">
+    Product Facts
+  </TabsTrigger>
+  <TabsTrigger value="terminology" className="shrink-0 whitespace-nowrap">
+    Terminology
+  </TabsTrigger>
+  <TabsTrigger value="documents" className="shrink-0 whitespace-nowrap">
+    Documents
+  </TabsTrigger>
+</TabsList>
 
         <TabsContent value="guidelines">
           <GuidelinesTab />
