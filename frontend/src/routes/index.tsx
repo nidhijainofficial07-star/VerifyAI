@@ -7,6 +7,7 @@ import {
   getReviewersViaApi,
   deleteReviewerViaApi,
   getSubmissionsViaApi,
+  deleteReportViaApi,
   getReviewerRequestsViaApi,
   decideReviewerRequestViaApi,
   getReviewerActivityViaApi,
@@ -26,6 +27,7 @@ import {
   FileSearch,
   ScanSearch,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth-context";
@@ -620,6 +622,34 @@ const [reviewerActivity, setReviewerActivity] = useState<
 const [activityLoading, setActivityLoading] = useState(false);
 const [activityError, setActivityError] = useState("");
 
+const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
+const [deleteReportError, setDeleteReportError] = useState("");
+
+async function handleDeleteReport(submission: Submission) {
+  const confirmed = window.confirm(
+    `Delete "${submission.title}"? This action cannot be undone.`
+  );
+
+  if (!confirmed) return;
+
+  setDeletingReportId(submission.id);
+  setDeleteReportError("");
+
+  try {
+    await deleteReportViaApi(submission.id);
+
+    setSubmissions((current) =>
+      current.filter((item) => item.id !== submission.id)
+    );
+  } catch (err) {
+    setDeleteReportError(
+      err instanceof Error ? err.message : "Could not delete this report."
+    );
+  } finally {
+    setDeletingReportId(null);
+  }
+}
+
 useEffect(() => {
   if (!user || user.role === "admin") return;
 
@@ -794,6 +824,11 @@ if (reportsError) {
 </CardTitle>
           </CardHeader>
           <CardContent>
+            {deleteReportError && (
+  <p className="mb-3 text-sm text-destructive" role="alert">
+    {deleteReportError}
+  </p>
+)}
             {recent.length === 0 ? (
   <EmptyState
     icon={isReviewer ? ClipboardCheck : FileSearch}
@@ -847,6 +882,21 @@ if (reportsError) {
       : `${s.analysis.issues.length} issue${s.analysis.issues.length === 1 ? "" : "s"}`}
   </span>
   <ReviewBadge status={s.reviewStatus} />
+
+  {user.role === "creator" &&
+    s.reviewStatus === "pending_review" && (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="text-destructive hover:text-destructive"
+        disabled={deletingReportId === s.id}
+        onClick={() => void handleDeleteReport(s)}
+      >
+        <Trash2 className="mr-1 h-4 w-4" />
+        {deletingReportId === s.id ? "Deleting..." : "Delete"}
+      </Button>
+    )}
 </div>
                   </li>
                 ))}
@@ -859,7 +909,12 @@ if (reportsError) {
           {!isReviewer && (
   <Card>
     <CardHeader>
-      <CardTitle className="text-base">Quick Actions</CardTitle>
+      <div>
+  <CardTitle className="text-base">Quick Actions</CardTitle>
+  <p className="mt-1 text-xs text-muted-foreground">
+    Shortcuts to your main workspace activities
+  </p>
+</div>
     </CardHeader>
     <CardContent className="flex flex-col gap-2">
       <Button asChild className="justify-between">
@@ -873,7 +928,7 @@ if (reportsError) {
       <Button asChild variant="outline" className="justify-between">
         <Link to="/brand-knowledge">
           <span className="flex items-center gap-2">
-            <BookOpenText className="h-4 w-4" /> Manage Brand Knowledge
+            <BookOpenText className="h-4 w-4" /> Manage Brand Guidelines
           </span>
           <ArrowRight className="h-4 w-4" />
         </Link>
@@ -881,7 +936,7 @@ if (reportsError) {
       <Button asChild variant="outline" className="justify-between">
         <Link to="/review">
           <span className="flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4" /> Review Pending Issues
+            <ClipboardCheck className="h-4 w-4" /> Review Submissions
           </span>
           <ArrowRight className="h-4 w-4" />
         </Link>
@@ -982,7 +1037,7 @@ if (reportsError) {
       </CardTitle>
     </CardHeader>
     <CardContent>
-      <TrendChart />
+      <TrendChart submissions={submissions} />
     </CardContent>
   </Card>
 )}
