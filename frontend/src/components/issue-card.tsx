@@ -46,7 +46,9 @@ export function IssueCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-semibold md:text-base">{issue.title}</h4>
+            <h4 className="break-words text-sm font-semibold md:text-base">
+  {issue.title}
+</h4>
             <SeverityBadge severity={issue.severity} />
             <ConfidenceBadge label={issue.confidence} />
             <ResolutionBadge resolution={issue.resolution} />
@@ -70,17 +72,21 @@ export function IssueCard({
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Why it is an issue
             </p>
-            <p className="mt-1 text-sm">{issue.explanation}</p>
+            <p className="mt-1 break-words text-sm leading-relaxed">
+  {issue.explanation}
+</p>
           </div>
           <div className="rounded-lg bg-muted/60 px-3 py-2.5">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Approved information
             </p>
-            <p className="mt-1 text-sm">{issue.approvedValue}</p>
+            <p className="mt-1 break-words text-sm leading-relaxed">
+  {issue.approvedValue}
+</p>
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="break-words text-xs leading-relaxed text-muted-foreground">
           Evidence / source: <span className="font-medium text-foreground">{issue.evidenceSource}</span>
         </p>
 
@@ -89,8 +95,10 @@ export function IssueCard({
             <p className="text-xs font-semibold tracking-wide text-accent-foreground uppercase">
               Suggested correction
             </p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-mono text-sm break-words">“{issue.suggestedCorrection}”</p>
+            <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-w-0 break-words font-mono text-sm leading-relaxed">
+  “{issue.suggestedCorrection}”
+</p>
               <Button variant="ghost" size="sm" onClick={() => copy(issue.suggestedCorrection!)}>
                 <Copy className="h-3.5 w-3.5" /> Copy
               </Button>
@@ -130,7 +138,7 @@ export function IssueCard({
         )}
 
         {interactive && !resolved && !editing && (
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
             {issue.suggestedCorrection && (
               <>
                 <Button size="sm" onClick={onAccept}>

@@ -31,44 +31,61 @@ export const Route = createFileRoute("/review")({
 });
 
 function ReviewRow({ submission }: { submission: Submission }) {
-  const pendingIssues = submission.analysis.issues.filter((i) => i.resolution === "pending").length;
+  const pendingIssues = submission.analysis.issues.filter(
+    (i) => i.resolution === "pending"
+  ).length;
+
   return (
-    <li className="rounded-xl border bg-card p-4 transition-shadow hover:shadow-md">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <Link
-            to="/review/$id"
-            params={{ id: submission.id }}
-            className="truncate text-sm font-semibold hover:text-primary hover:underline md:text-base"
-          >
-            {submission.title}
-          </Link>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Submitted {formatDateTime(submission.createdAt)} · {submission.contentType}
-          </p>
+    <li className="rounded-xl border bg-card p-3 transition-colors hover:bg-muted/20 sm:p-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Link
+              to="/review/$id"
+              params={{ id: submission.id }}
+              className="block break-words text-sm font-semibold hover:text-primary hover:underline sm:text-base"
+            >
+              {submission.title}
+            </Link>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              Submitted {formatDateTime(submission.createdAt)} ·{" "}
+              {submission.contentType}
+            </p>
+          </div>
+
+          <Button asChild size="sm">
+            <Link to="/review/$id" params={{ id: submission.id }}>
+              <ClipboardCheck className="h-4 w-4" />
+              Review
+            </Link>
+          </Button>
         </div>
-        <div className="text-right text-xs">
-          <p className="font-medium">
-            {submission.analysis.issues.length} issue{submission.analysis.issues.length === 1 ? "" : "s"}
-          </p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <ReviewBadge status={submission.reviewStatus} />
+
+          <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+            Risk: {riskLevel(submission.analysis.counts)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <span className="text-xs font-medium">
+            {submission.analysis.issues.length} issue
+            {submission.analysis.issues.length === 1 ? "" : "s"}
+          </span>
+
           {pendingIssues > 0 && (
-            <p className="text-muted-foreground">{pendingIssues} awaiting decision</p>
+            <span className="text-xs text-muted-foreground">
+              {pendingIssues} awaiting decision
+            </span>
           )}
         </div>
-        <span className="text-xs font-medium text-muted-foreground">
-          Risk: <span className="font-semibold text-foreground">{riskLevel(submission.analysis.counts)}</span>
-        </span>
-        <ReviewBadge status={submission.reviewStatus} />
-        <Button asChild size="sm">
-          <Link to="/review/$id" params={{ id: submission.id }}>
-            <ClipboardCheck className="h-4 w-4" /> Review
-          </Link>
-        </Button>
       </div>
     </li>
   );
 }
-
 
 function ReviewCenterPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);

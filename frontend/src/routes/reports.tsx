@@ -32,34 +32,47 @@ export const Route = createFileRoute("/reports")({
 
 function ReportRow({ submission }: { submission: Submission }) {
   const a = submission.analysis;
+
   return (
-    <li className="rounded-xl border bg-card p-4 transition-shadow hover:shadow-md">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <Link
-            to="/reports/$id"
-            params={{ id: submission.id }}
-            className="truncate text-sm font-semibold hover:text-primary hover:underline md:text-base"
-          >
-            {submission.title}
-          </Link>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {formatDateTime(submission.createdAt)} · {submission.contentType} · {a.engine}
-          </p>
+    <li className="rounded-xl border bg-card p-3 transition-colors hover:bg-muted/20 sm:p-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Link
+              to="/reports/$id"
+              params={{ id: submission.id }}
+              className="block break-words text-sm font-semibold hover:text-primary hover:underline sm:text-base"
+            >
+              {submission.title}
+            </Link>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatDateTime(submission.createdAt)} · {submission.contentType} · {a.engine}
+            </p>
+          </div>
+
+          <Button asChild variant="outline" size="sm">
+            <Link to="/reports/$id" params={{ id: submission.id }}>
+              <FileSearch className="h-4 w-4" />
+              Open
+            </Link>
+          </Button>
         </div>
-        <ComplianceBadge status={a.status} />
-        <div className="text-right text-xs">
-          <p className="font-medium">
+
+        <div className="flex flex-wrap items-center gap-2">
+          <ComplianceBadge status={a.status} />
+          <ReviewBadge status={submission.reviewStatus} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <span className="text-xs font-medium">
             {a.issues.length} issue{a.issues.length === 1 ? "" : "s"}
-          </p>
-          <p className="text-muted-foreground">{summarizeCounts(a.counts)}</p>
+          </span>
+
+          <span className="text-xs text-muted-foreground">
+            {summarizeCounts(a.counts)}
+          </span>
         </div>
-        <ReviewBadge status={submission.reviewStatus} />
-        <Button asChild variant="outline" size="sm">
-          <Link to="/reports/$id" params={{ id: submission.id }}>
-            <FileSearch className="h-4 w-4" /> Open report
-          </Link>
-        </Button>
       </div>
     </li>
   );

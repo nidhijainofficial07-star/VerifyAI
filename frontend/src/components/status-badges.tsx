@@ -31,7 +31,7 @@ export function ConfidenceBadge({ label }: { label: ConfidenceLabel }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium leading-relaxed",
         confidenceStyles[label],
       )}
     >
@@ -75,7 +75,7 @@ export function ReviewBadge({ status }: { status: ReviewStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex max-w-full items-center rounded-full border px-2.5 py-0.5 text-xs font-medium leading-relaxed",
         styles[status],
       )}
     >
@@ -98,7 +98,7 @@ export function ResolutionBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+        "inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-xs font-medium leading-relaxed capitalize",
         styles[resolution],
       )}
     >

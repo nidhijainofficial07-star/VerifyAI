@@ -176,7 +176,7 @@ if (error) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button asChild variant="ghost" size="sm">
           <Link to="/reports">
@@ -191,8 +191,10 @@ if (error) {
       </div>
 
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">{submission.title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h2 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+  {submission.title}
+</h2>
+        <p className="mt-1 break-words text-sm leading-relaxed text-muted-foreground">
           {submission.contentType} · Analysed {formatDateTime(a.analyzedAt)} · {a.engine}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -225,7 +227,7 @@ if (error) {
           <p className="mt-3 text-sm text-muted-foreground">{summarizeCounts(a.counts)}</p>
           {a.status === "compliant" && (
             <p className="mt-3 flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-sm text-accent-foreground">
-              <ShieldCheck className="h-4 w-4" /> No issues detected against the current brand
+              <ShieldCheck className="h-4 w-4 shrink-0" /> No issues detected against the current brand
               knowledge. Human review is still available before publication.
             </p>
           )}
@@ -247,12 +249,12 @@ if (error) {
             <p className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Original content (never overwritten)
             </p>
-            <p className="rounded-lg border bg-muted/40 px-3 py-2.5 text-sm whitespace-pre-wrap">
+            <p className="rounded-lg border bg-muted/40 px-3 py-2.5 text-sm whitespace-pre-wrap break-words">
               {submission.content}
             </p>
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Suggested corrected content
               </p>
@@ -263,7 +265,7 @@ if (error) {
               )}
             </div>
             {submission.correctedContent ? (
-              <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2.5 text-sm whitespace-pre-wrap">
+              <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2.5 text-sm whitespace-pre-wrap break-words">
                 {submission.correctedContent}
               </p>
             ) : (
