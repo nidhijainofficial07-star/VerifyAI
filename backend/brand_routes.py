@@ -504,8 +504,9 @@ def update_fact(
     return {"fact": serialize_fact(row)}
 
 
+
 # -----------------------------
-# DELETE PRODUCT FACT - SOFT DELETE
+# DELETE PRODUCT FACT - PERMANENT DELETE
 # -----------------------------
 
 @router.delete("/facts/{fact_id}")
@@ -517,8 +518,7 @@ def delete_fact(
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                UPDATE brand_products
-                SET active = FALSE, updated_at = NOW()
+                DELETE FROM brand_products
                 WHERE id = %s AND brand_id = %s
                 RETURNING id
                 """,
@@ -526,10 +526,12 @@ def delete_fact(
             )
 
             if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Product fact not found.")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Product fact not found."
+                )
 
-    return {"message": "Product fact deactivated successfully."}
-
+    return {"message": "Product fact deleted successfully."}
 
 # -----------------------------
 # READ TERMINOLOGY
@@ -685,8 +687,9 @@ def update_terminology(
     return {"terminology": serialize_terminology(row)}
 
 
+
 # -----------------------------
-# DELETE TERMINOLOGY - SOFT DELETE
+# DELETE TERMINOLOGY - PERMANENT DELETE
 # -----------------------------
 
 @router.delete("/terminology/{term_id}")
@@ -698,8 +701,7 @@ def delete_terminology(
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                UPDATE brand_terminology
-                SET active = FALSE, updated_at = NOW()
+                DELETE FROM brand_terminology
                 WHERE id = %s AND brand_id = %s
                 RETURNING id
                 """,
@@ -707,6 +709,9 @@ def delete_terminology(
             )
 
             if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Terminology entry not found.")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Terminology entry not found."
+                )
 
-    return {"message": "Terminology entry deactivated successfully."}
+    return {"message": "Terminology entry deleted successfully."}
