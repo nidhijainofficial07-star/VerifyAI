@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import {
   getSubmissionViaApi,
   getReviewHistoryViaApi,
@@ -159,10 +160,9 @@ if (error) {
       </div>
     );
   }
-
+  const { user } = useAuth();
   const a = submission.analysis;
   const pendingIssues = a.issues.filter((i) => i.resolution === "pending").length;
-
   const copyCorrected = async () => {
     if (!submission.correctedContent) return;
     try {
@@ -183,11 +183,14 @@ if (error) {
             <ArrowLeft className="h-4 w-4" /> All reports
           </Link>
         </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/review/$id" params={{ id: submission.id }}>
-            <ClipboardCheck className="h-4 w-4" /> Open in Review Center
-          </Link>
-        </Button>
+        {(user?.role === "reviewer" || user?.role === "admin") && (
+  <Button asChild variant="outline" size="sm">
+    <Link to="/review/$id" params={{ id: submission.id }}>
+      <ClipboardCheck className="h-4 w-4" />
+      Open in Review Center
+    </Link>
+  </Button>
+)}
       </div>
 
       <div>

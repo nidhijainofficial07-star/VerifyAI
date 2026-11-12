@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getSubmissionsViaApi } from "@/lib/api";
+import type { Submission } from "@/lib/types";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -114,9 +116,49 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+
 function NotificationsMenu() {
-  const state = useAppState();
-  const pending = state.submissions.filter((s) => s.reviewStatus === "pending_review");
+  const { user } = useAuth();
+  const [reports, setReports] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadNotifications() {
+      try {
+        const data = await getSubmissionsViaApi();
+
+        if (active) {
+          setReports(data);
+        }
+      } catch (error) {
+        console.error("Could not load notifications:", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    if (user) {
+      void loadNotifications();
+    } else {
+      setLoading(false);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const notifications =
+    user?.role === "creator"
+      ? reports.filter((s) => s.reviewStatus !== "pending_review")
+      : reports.filter((s) => s.reviewStatus === "pending_review");
+
+  const isReviewer = user?.role === "reviewer";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -125,25 +167,43 @@ function NotificationsMenu() {
           className="relative flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-muted"
         >
           <Bell className="h-4.5 w-4.5" />
-          {pending.length > 0 && (
+          {notifications.length > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-              {pending.length}
+              {notifications.length}
             </span>
           )}
         </button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {pending.length === 0 ? (
-          <DropdownMenuItem disabled>No pending reviews — all caught up.</DropdownMenuItem>
+
+        {loading ? (
+          <DropdownMenuItem disabled>
+            Loading notifications...
+          </DropdownMenuItem>
+        ) : notifications.length === 0 ? (
+          <DropdownMenuItem disabled>
+            No new notifications.
+          </DropdownMenuItem>
         ) : (
-          pending.slice(0, 5).map((s) => (
+          notifications.slice(0, 5).map((s) => (
             <DropdownMenuItem key={s.id} asChild>
-              <Link to="/review/$id" params={{ id: s.id }} className="flex flex-col gap-0.5">
-                <span className="truncate text-sm font-medium">Review waiting: {s.title}</span>
+              <Link
+                to={isReviewer ? "/review/$id" : "/reports/$id"}
+                params={{ id: s.id }}
+                className="flex flex-col gap-0.5"
+              >
+                <span className="truncate text-sm font-medium">
+                  {isReviewer
+                    ? `Review waiting: ${s.title}`
+                    : `Your report: ${s.title}`}
+                </span>
                 <span className="text-xs text-muted-foreground">
-                  {s.analysis.issues.length} issue{s.analysis.issues.length === 1 ? "" : "s"} detected
+                  {isReviewer
+                    ? `${s.analysis.issues.length} issue${s.analysis.issues.length === 1 ? "" : "s"} detected`
+                    : `Status: ${s.reviewStatus.replace(/_/g, " ")}`}
                 </span>
               </Link>
             </DropdownMenuItem>
@@ -153,6 +213,7 @@ function NotificationsMenu() {
     </DropdownMenu>
   );
 }
+
 
 function Avatar() {
   const { user, logout } = useAuth();
