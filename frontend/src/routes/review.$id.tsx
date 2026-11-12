@@ -156,6 +156,7 @@ setSubmission(updatedSubmission);
 }
 
 
+
 function ReviewBody({
   submission,
   comment,
@@ -173,26 +174,31 @@ function ReviewBody({
   ).length;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" size="sm">
+    <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
+      {/* Navigation */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <Button asChild variant="ghost" size="sm" className="w-full sm:w-fit">
           <Link to="/review">
-            <ArrowLeft className="h-4 w-4" /> Review Center
+            <ArrowLeft className="h-4 w-4" />
+            Review Center
           </Link>
         </Button>
 
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="w-full sm:w-fit">
           <Link to="/reports/$id" params={{ id: submission.id }}>
-            <ClipboardCheck className="h-4 w-4" /> Full compliance report
+            <ClipboardCheck className="h-4 w-4" />
+            Full compliance report
           </Link>
         </Button>
       </div>
 
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
+      {/* Submission details */}
+      <div className="min-w-0">
+        <h2 className="break-words text-xl font-semibold tracking-tight sm:text-2xl">
           {submission.title}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+
+        <p className="mt-2 break-words text-xs text-muted-foreground sm:text-sm">
           Submitted {formatDateTime(submission.createdAt)} ·{" "}
           {submission.contentType} · {a.issues.length} issues · Risk level{" "}
           {riskLevel(a.counts)}
@@ -207,8 +213,9 @@ function ReviewBody({
         </div>
       </div>
 
+      {/* Issues */}
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-2">
           <CardTitle className="text-base">
             Issues requiring your attention
           </CardTitle>
@@ -227,35 +234,37 @@ function ReviewBody({
             />
           ) : (
             <div className="space-y-3">
-              {submission.analysis.issues.map((issue) => (
-  <div
-    key={issue.id}
-    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
-  >
-    <div className="min-w-0 flex-1">
-      <p className="text-sm font-semibold">
-        {issue.category.replace(/-/g, " ")}
-      </p>
+              {a.issues.map((issue) => (
+                <div
+                  key={issue.id}
+                  className="min-w-0 rounded-lg border p-3 sm:p-4"
+                >
+                  <p className="break-words text-sm font-semibold capitalize">
+                    {issue.category.replace(/-/g, " ")}
+                  </p>
 
-      <p className="mt-1 text-sm text-muted-foreground">
-        {issue.explanation}
-      </p>
-    </div>
+                  <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">
+                    {issue.explanation}
+                  </p>
 
-    <div className="flex items-center gap-2 text-sm">
-      <span>{issue.severity}</span>
-      <span>•</span>
-      <span>{issue.resolution.replace(/_/g, " ")}</span>
-    </div>
-  </div>
-))}
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-xs">
+                    <Badge variant="outline">
+                      {issue.severity}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {issue.resolution.replace(/_/g, " ")}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
+      {/* Final reviewer decision */}
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-2">
           <CardTitle className="text-base">
             Final reviewer decision
           </CardTitle>
@@ -266,44 +275,49 @@ function ReviewBody({
 
         <CardContent className="space-y-4">
           {submission.review && (
-            <div className="rounded-lg border bg-muted/40 p-3">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <div className="break-words rounded-lg border bg-muted/40 p-3 sm:p-4">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
                 Previous decision:{" "}
                 {submission.review.decision.replace(/_/g, " ")}
               </p>
 
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
                 "{submission.review.comment}"
               </p>
 
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 — {submission.review.reviewer},{" "}
                 {formatDateTime(submission.review.at)}
               </p>
             </div>
           )}
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="review-comment">
               Reviewer comment (required)
             </Label>
             <Textarea
               id="review-comment"
-              rows={3}
+              rows={4}
               placeholder="Explain your decision for the audit trail..."
               value={comment}
               onChange={(e) => setComment(e.target.value)}
+              className="min-h-24 resize-y"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => record("approved")}>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Button
+              className="w-full"
+              onClick={() => record("approved")}
+            >
               <CheckCircle2 className="h-4 w-4" />
               Approve
             </Button>
 
             <Button
+              className="w-full"
               variant="outline"
               onClick={() => record("changes_requested")}
             >
@@ -312,6 +326,7 @@ function ReviewBody({
             </Button>
 
             <Button
+              className="w-full"
               variant="destructive"
               onClick={() => record("rejected")}
             >
@@ -320,10 +335,10 @@ function ReviewBody({
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-  Correction decisions and final content approval are separate.
-  Your decision and comment are saved to the report's review record.
-</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Correction decisions and final content approval are separate.
+            Your decision and comment are saved to the report's review record.
+          </p>
         </CardContent>
       </Card>
     </div>

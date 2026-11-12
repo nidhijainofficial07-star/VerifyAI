@@ -197,11 +197,11 @@ function NotificationsCard() {
         ).map(([key, label]) => (
           <div
             key={key}
-            className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+            className="flex items-center justify-between gap-3 rounded-lg border px-3 py-3"
           >
             <Label
               htmlFor={`pref-${key}`}
-              className="cursor-pointer text-sm font-normal"
+              className="min-w-0 flex-1 cursor-pointer text-sm font-normal leading-relaxed"
             >
               {label}
             </Label>
@@ -218,6 +218,7 @@ function NotificationsCard() {
   );
 }
 
+
 function AppInfoCard() {
   return (
     <Card>
@@ -228,8 +229,8 @@ function AppInfoCard() {
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-2 text-sm text-muted-foreground">
-        <div className="flex justify-between">
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span>Product</span>
           <span className="flex items-center gap-1.5 font-medium text-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" />
@@ -239,41 +240,37 @@ function AppInfoCard() {
 
         <Separator />
 
-        <div className="flex justify-between">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span>Tagline</span>
-          <span className="text-foreground">
+          <span className="break-words text-foreground sm:text-right">
             Every Brand Decision, Verified.
           </span>
         </div>
 
         <Separator />
 
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span>Analysis engine</span>
-          <span className="text-right text-foreground">
+          <span className="break-words text-foreground sm:text-right">
             Deterministic rule-based engine
           </span>
         </div>
 
         <Separator />
 
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span>Backend</span>
           <span className="text-foreground">FastAPI</span>
         </div>
 
         <Separator />
 
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <span>Database</span>
-          <span className="text-right text-foreground">
-            Neon PostgreSQL
-          </span>
+          <span className="text-foreground">Neon PostgreSQL</span>
         </div>
 
-        <Separator />
-
-        <p className="pt-1 text-xs">
+        <p className="border-t pt-3 text-xs leading-relaxed">
           Authentication, content analysis, reports and review decisions
           are connected to the backend. Organisation profile and
           notification preferences are currently browser-local.
@@ -281,41 +278,47 @@ function AppInfoCard() {
           are not implemented.
         </p>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" className="mt-2">
-              <RotateCcw className="h-4 w-4" />
-              Reset local demo submissions
-            </Button>
-          </AlertDialogTrigger>
+        <div className="border-t pt-4">
+          <p className="mb-3 text-sm font-medium text-foreground">
+            Local demo data
+          </p>
 
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Reset local demo submissions?
-              </AlertDialogTitle>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-fit">
+                <RotateCcw className="h-4 w-4" />
+                Reset local demo submissions
+              </Button>
+            </AlertDialogTrigger>
 
-              <AlertDialogDescription>
-                This clears locally stored demo submissions only.
-                It does not delete authenticated reports or records
-                stored in the Neon database.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Reset local demo submissions?
+                </AlertDialogTitle>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogDescription>
+                  This clears locally stored demo submissions only.
+                  It does not delete authenticated reports or records
+                  stored in the Neon database.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
 
-              <AlertDialogAction
-                onClick={() => {
-                  clearSubmissions();
-                  toast.success("Local demo submissions cleared");
-                }}
-              >
-                Reset
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+
+                <AlertDialogAction
+                  onClick={() => {
+                    clearSubmissions();
+                    toast.success("Local demo submissions cleared");
+                  }}
+                >
+                  Reset
+                </AlertDialogAction>
+               </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </CardContent>
     </Card>
   );
@@ -323,7 +326,7 @@ function AppInfoCard() {
 
 function SettingsPage() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-5 sm:space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">
           Settings

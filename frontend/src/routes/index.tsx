@@ -74,16 +74,24 @@ function StatCard({
   value: number;
   hint: string;
 }) {
+  
   return (
     <Card className="transition-shadow hover:shadow-md">
-      <CardContent className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary">
+      <CardContent className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary sm:h-11 sm:w-11">
           <Icon className="h-5 w-5 text-primary" />
         </div>
-        <div>
-          <p className="text-2xl font-semibold tracking-tight">{value}</p>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground/80">{hint}</p>
+
+        <div className="min-w-0">
+          <p className="text-2xl font-semibold tracking-tight tabular-nums">
+            {value}
+          </p>
+          <p className="break-words text-sm font-medium text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground/80">
+            {hint}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -268,20 +276,19 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {name.split(" ")[0]}!
-        </h2>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+  Welcome back, {name.split(" ")[0]}!
+</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Admin Dashboard — Manage reviewer access and oversee VerityAI.
         </p>
       </div>
 
       <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Platform Overview</h3>
-          <Button
+<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <Button
             variant="outline"
             size="sm"
             onClick={() => void loadStats()}
@@ -302,7 +309,7 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
         )}
 
         {stats && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             <StatCard
               icon={ShieldCheck}
               label="Total Users"
@@ -351,8 +358,8 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardContent className="flex items-center gap-4">
-            <ShieldCheck className="h-9 w-9 text-primary" />
+<CardContent className="flex items-center gap-3 p-4 sm:gap-4 sm:p-5">
+              <ShieldCheck className="h-9 w-9 text-primary" />
             <div>
               <p className="font-semibold">Administrator</p>
               <p className="text-sm text-muted-foreground">
@@ -363,8 +370,8 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
         </Card>
 
         <Card>
-          <CardContent className="flex items-center gap-4">
-            <ClipboardCheck className="h-9 w-9 text-primary" />
+<CardContent className="flex items-center gap-3 p-4 sm:gap-4 sm:p-5">
+              <ClipboardCheck className="h-9 w-9 text-primary" />
             <div>
               <p className="font-semibold">Reviewer Management</p>
               <p className="text-sm text-muted-foreground">
@@ -377,7 +384,8 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+
             <CardTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5" />
               Pending Reviewer Requests
@@ -424,7 +432,7 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
               {reviewerRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="flex flex-wrap items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="font-medium">{request.name}</p>
@@ -436,10 +444,11 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
                     </p>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={processingRequestId === request.id}
+<div className="flex w-full gap-2 sm:w-auto">
+  <Button
+  size="sm"
+  className="flex-1 sm:flex-none"
+  disabled={processingRequestId === request.id}
                       onClick={() =>
                         void handleReviewerDecision(request.id, "approve")
                       }
@@ -480,7 +489,7 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleCreateReviewer} className="max-w-xl space-y-4">
+          <form onSubmit={handleCreateReviewer} className="w-full max-w-xl space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Full Name</label>
               <input
@@ -489,7 +498,7 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
                 value={reviewerName}
                 onChange={(e) => setReviewerName(e.target.value)}
                 placeholder="Enter reviewer name"
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="min-w-0 w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
             </div>
 
@@ -526,7 +535,7 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
               <p className="text-sm text-green-600">{success}</p>
             )}
 
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? "Creating..." : "Create Reviewer Account"}
             </Button>
           </form>
@@ -565,19 +574,21 @@ async function handleCreateReviewer(e: FormEvent<HTMLFormElement>) {
               {reviewers.map((reviewer) => (
                 <div
                   key={reviewer.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
+                  className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
-                    <p className="font-medium">{reviewer.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {reviewer.email}
-                    </p>
-                  </div>
+                  <div className="min-w-0 flex-1">
+  <p className="break-words font-medium">{reviewer.name}</p>
+  <p className="break-all text-sm text-muted-foreground">
+    {reviewer.email}
+  </p>
+</div>
 
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                  
+  type="button"
+  variant="outline"
+  size="sm"
+  className="w-full sm:w-auto"
                     disabled={removingReviewerId === reviewer.id}
                     onClick={() => void handleDeleteReviewer(reviewer)}
                   >
@@ -687,11 +698,11 @@ if (reportsError) {
     .slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
       <div>
-  <h2 className="text-2xl font-semibold tracking-tight">
-    Welcome back, {user?.name?.split(" ")[0] || "User"}!
-  </h2>
+  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+  Welcome back, {user?.name?.split(" ")[0] || "User"}!
+</h2>
 
   <p className="mt-1 text-sm text-muted-foreground">
     You are logged in as{" "}
@@ -700,7 +711,7 @@ if (reportsError) {
   </p>
 </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <StatCard icon={ShieldCheck} label="Total Content Checks" value={totalChecks} hint="All-time analyses" />
         <StatCard icon={AlertTriangle} label="Issues Detected" value={issuesDetected} hint="Across all content" />
         <StatCard icon={Clock} label="Pending Reviews" value={pendingReviews} hint="Waiting on a human decision" />
@@ -729,12 +740,15 @@ if (reportsError) {
             ) : (
               <ul className="divide-y">
                 {recent.map((s) => (
-                  <li key={s.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <li
+  key={s.id}
+  className="flex flex-col items-start gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
+>
                     <div className="min-w-0 flex-1">
                       <Link
                         to="/reports/$id"
                         params={{ id: s.id }}
-                        className="truncate text-sm font-medium hover:text-primary hover:underline"
+                        className="block break-words text-sm font-medium hover:text-primary hover:underline"
                       >
                         {s.title}
                       </Link>
@@ -742,13 +756,15 @@ if (reportsError) {
                         {formatDateTime(s.createdAt)} · {s.contentType}
                       </p>
                     </div>
-                    <ComplianceBadge status={s.analysis.status} />
-                    <span className="text-xs text-muted-foreground">
-                      {s.analysis.issues.length === 0
-                        ? "No issues"
-                        : `${s.analysis.issues.length} issue${s.analysis.issues.length === 1 ? "" : "s"}`}
-                    </span>
-                    <ReviewBadge status={s.reviewStatus} />
+<div className="flex flex-wrap items-center gap-2">
+  <ComplianceBadge status={s.analysis.status} />
+  <span className="text-xs text-muted-foreground">
+    {s.analysis.issues.length === 0
+      ? "No issues"
+      : `${s.analysis.issues.length} issue${s.analysis.issues.length === 1 ? "" : "s"}`}
+  </span>
+  <ReviewBadge status={s.reviewStatus} />
+</div>
                   </li>
                 ))}
               </ul>

@@ -62,7 +62,7 @@ const visibleItems = NAV_ITEMS.filter(
             to={item.url}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "group flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
               active
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
@@ -122,7 +122,7 @@ function NotificationsMenu() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-muted"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-muted"
         >
           <Bell className="h-4.5 w-4.5" />
           {pending.length > 0 && (
@@ -262,7 +262,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-72 shadow-2xl">
+          <div className="absolute inset-y-0 left-0 w-72 max-w-[calc(100vw-3rem)] shadow-2xl">
             <button
               aria-label="Close menu"
               onClick={() => setMobileOpen(false)}
@@ -280,17 +280,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             aria-label="Open menu"
             onClick={() => setMobileOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border bg-card text-muted-foreground transition-colors hover:bg-muted lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border bg-card text-muted-foreground transition-colors hover:bg-muted lg:hidden"
           >
             <Menu className="h-4.5 w-4.5" />
           </button>
-          <h1 className="text-lg font-semibold tracking-tight">{pageTitle}</h1>
+          <h1 className="min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg">
+  {pageTitle}
+</h1>
           <div className="ml-auto flex items-center gap-3">
             <NotificationsMenu />
             <Avatar />
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-8">
+          {children}</main>
       </div>
     </div>
   );

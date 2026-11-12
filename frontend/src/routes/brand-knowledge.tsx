@@ -236,7 +236,7 @@ function GuidelinesTab() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between space-y-0">
+      <CardHeader className="flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <CardTitle className="text-base">Brand Guidelines</CardTitle>
           <CardDescription>
@@ -245,9 +245,12 @@ function GuidelinesTab() {
         </div>
 
         {canManage && (
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Add guideline
-          </Button>
+          <Button
+  onClick={openCreate}
+  className="w-full sm:w-auto"
+>
+  Add Guideline
+</Button>
         )}
       </CardHeader>
 
@@ -269,7 +272,7 @@ function GuidelinesTab() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="text-sm font-semibold">{g.title}</h4>
+                      <h4 className="break-words text-sm font-semibold">{g.title}</h4>
                       <SeverityBadge severity={g.severity} />
                       <Badge variant="outline">{g.category}</Badge>
 
@@ -293,9 +296,9 @@ function GuidelinesTab() {
                       {g.description}
                     </p>
 
-                    <p className="mt-1.5 rounded-lg bg-muted/60 px-3 py-1.5 text-sm">
-                      {g.rule}
-                    </p>
+                    <p className="mt-1.5 break-words rounded-lg bg-muted/60 px-3 py-1.5 text-sm">
+  {g.rule}
+</p>
                   </div>
 
                   {canManage && (
@@ -579,7 +582,7 @@ function FactsTab() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between space-y-0">
+      <CardHeader className="flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <CardTitle className="text-base">
             Approved Product Facts
@@ -592,13 +595,14 @@ function FactsTab() {
 
         {canManage && (
           <Button
-            onClick={() => {
-              setForm(emptyFact);
-              setCreating(true);
-            }}
-          >
-            <Plus className="h-4 w-4" /> Add product
-          </Button>
+  onClick={() => {
+    setForm(emptyFact);
+    setCreating(true);
+  }}
+  className="w-full sm:w-auto"
+>
+  <Plus className="h-4 w-4" /> Add product
+</Button>
         )}
       </CardHeader>
 
@@ -635,9 +639,9 @@ function FactsTab() {
             <tbody className="divide-y">
               {facts.map((f) => (
                 <tr key={f.id}>
-                  <td className="py-3 pr-4 font-medium">
-                    {f.productName}
-                  </td>
+                  <td className="break-words py-3 pr-4 font-medium">
+  {f.productName}
+</td>
 
                   <td className="py-3 pr-4 font-mono">
                     {f.approvedPrice}
@@ -906,7 +910,7 @@ function TerminologyTab() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between space-y-0">
+      <CardHeader className="flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <CardTitle className="text-base">
             Approved Terminology
@@ -918,13 +922,14 @@ function TerminologyTab() {
 
         {canManage && (
           <Button
-            onClick={() => {
-              setForm(emptyTerm);
-              setCreating(true);
-            }}
-          >
-            <Plus className="h-4 w-4" /> Add term
-          </Button>
+  onClick={() => {
+    setForm(emptyTerm);
+    setCreating(true);
+  }}
+  className="w-full sm:w-auto"
+>
+  <Plus className="h-4 w-4" /> Add term
+</Button>
         )}
       </CardHeader>
 
@@ -1223,8 +1228,7 @@ function DocumentsTab() {
               return (
                 <li
                   key={d.id}
-                  className="flex items-center gap-3 px-4 py-3"
-                >
+className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center"                >
                   <FileUp className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
 
                   <div className="min-w-0 flex-1">
@@ -1270,18 +1274,17 @@ function DocumentsTab() {
 
 function BrandKnowledgePage() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Brand Knowledge
-        </h2>
+<div className="mx-auto w-full max-w-5xl space-y-5 sm:space-y-6">      <div>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+  Brand Knowledge
+</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           The approved information every content check is measured against.
         </p>
       </div>
 
       <Tabs defaultValue="guidelines">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="guidelines">Guidelines</TabsTrigger>
           <TabsTrigger value="facts">Product Facts</TabsTrigger>
           <TabsTrigger value="terminology">Terminology</TabsTrigger>
