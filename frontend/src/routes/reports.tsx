@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ComplianceBadge, ReviewBadge } from "@/components/status-badges";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -80,6 +81,8 @@ function ReportRow({ submission }: { submission: Submission }) {
 
 
 function ReportsPage() {
+  const { user } = useAuth();
+const canAccessReview = user?.role === "reviewer" || user?.role === "admin";
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -185,13 +188,15 @@ function ReportsPage() {
               <>
                 <CheckCircle2 className="h-3.5 w-3.5 text-accent-foreground" />
                 No pending reviews — human decisions recorded in the{" "}
-                <Link
-                  to="/review"
-                  className="mx-0.5 inline-flex items-center gap-1 underline"
-                >
-                  <ClipboardCheck className="h-3 w-3" />
-                  Review Center
-                </Link>.
+                {canAccessReview && (
+  <Link
+    to="/review"
+    className="mx-0.5 inline-flex items-center gap-1 underline"
+  >
+    <ClipboardCheck className="h-3 w-3" />
+    Review Center
+  </Link>
+)}
               </>
             )}
           </p>

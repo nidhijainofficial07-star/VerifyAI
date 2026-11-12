@@ -1,4 +1,11 @@
-import { createFileRoute, Link, Outlet, useMatch } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useMatch,
+  useNavigate,
+} from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
 import { useEffect, useState } from "react";
 import { getSubmissionsViaApi } from "@/lib/api";
 import { AlertTriangle, ClipboardCheck, ScanSearch } from "lucide-react";
@@ -88,6 +95,18 @@ function ReviewRow({ submission }: { submission: Submission }) {
 }
 
 function ReviewCenterPage() {
+  const { user, loading: authLoading } = useAuth();
+const navigate = useNavigate();
+
+useEffect(() => {
+  if (authLoading) return;
+
+  if (!user) {
+    navigate({ to: "/login", replace: true });
+  } else if (user.role !== "reviewer" && user.role !== "admin") {
+    navigate({ to: "/", replace: true });
+  }
+}, [authLoading, user, navigate]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -111,6 +130,20 @@ function ReviewCenterPage() {
 
     void loadReports();
   }, []);
+
+  if (
+  authLoading ||
+  !user ||
+  (user.role !== "reviewer" && user.role !== "admin")
+) {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <p className="text-sm text-muted-foreground">
+        Checking access...
+      </p>
+    </div>
+  );
+}
 
   const isDetailPage = useMatch({
     from: "/review/$id",
