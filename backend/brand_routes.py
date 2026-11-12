@@ -317,8 +317,9 @@ def set_guideline_active(
     return {"guideline": serialize_guideline(updated)}
 
 
+
 # -----------------------------
-# DELETE GUIDELINE - SOFT DELETE
+# DELETE GUIDELINE - PERMANENT DELETE
 # -----------------------------
 
 @router.delete("/guidelines/{guideline_id}")
@@ -330,8 +331,7 @@ def delete_guideline(
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                UPDATE brand_guidelines
-                SET active = FALSE, updated_at = NOW()
+                DELETE FROM brand_guidelines
                 WHERE id = %s AND brand_id = %s
                 RETURNING id
                 """,
@@ -339,10 +339,12 @@ def delete_guideline(
             )
 
             if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Guideline not found.")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Guideline not found."
+                )
 
-    return {"message": "Guideline deactivated successfully."}
-
+    return {"message": "Guideline deleted successfully."}
 
 # -----------------------------
 # READ PRODUCT FACTS
