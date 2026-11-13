@@ -180,7 +180,7 @@ def get_my_profile(current_user: dict = Depends(get_current_user)):
 
 @admin_router.post("/reviewers", status_code=status.HTTP_201_CREATED)
 def create_reviewer(
-    request: CreateReviewerRequest,
+    request: RegisterRequest,
     current_user: dict = Depends(require_roles("admin"))
 ):
     name = request.name.strip()

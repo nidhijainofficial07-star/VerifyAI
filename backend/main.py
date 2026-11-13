@@ -143,6 +143,90 @@ def analyze(
         **result
     }
 
+
+@app.post("/reports/{report_id}/resubmit")
+def resubmit_report(
+    report_id: int,
+    request: ContentRequest,
+    current_user: dict = Depends(require_roles("creator"))
+):
+    if len(request.content.strip()) < 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Content is too short. Enter at least 20 characters."
+        )
+
+    result = analyze_content(request.content)
+
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            # Verify ownership and current review status
+            cursor.execute("""
+                SELECT id, review_status
+                FROM reports
+                WHERE id = %s AND creator_id = %s
+                FOR UPDATE
+            """, (report_id, current_user["id"]))
+
+            report = cursor.fetchone()
+
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found or you do not own this report."
+                )
+
+            if report["review_status"] != "request_changes":
+                raise HTTPException(
+                    status_code=409,
+                    detail="This report is not waiting for changes."
+                )
+
+            # Update the existing report, keeping its ID and submission date
+            cursor.execute("""
+                UPDATE reports
+                SET brand = %s,
+                    content = %s,
+                    result_json = %s,
+                    review_status = 'pending_review',
+                    reviewer_comment = '',
+                    reviewer_id = NULL,
+                    reviewed_at = NULL
+                WHERE id = %s
+            """, (
+                result["brand"],
+                request.content,
+                json.dumps(result),
+                report_id
+            ))
+
+            # Notify active reviewers and admins
+            cursor.execute("""
+                INSERT INTO notifications (
+                    user_id,
+                    report_id,
+                    title,
+                    message
+                )
+                SELECT
+                    id,
+                    %s,
+                    'Report resubmitted for review',
+                    'A creator has updated a report and submitted it for review.'
+                FROM users
+                WHERE role IN ('reviewer', 'admin')
+                  AND is_active = TRUE
+                  AND id != %s
+            """, (report_id, current_user["id"]))
+
+    return {
+        "message": "Report resubmitted successfully.",
+        "report_id": report_id,
+        **result
+    }
+
+
 @app.delete("/reports/{report_id}")
 def delete_report(
     report_id: int,
