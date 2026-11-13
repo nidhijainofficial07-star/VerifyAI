@@ -118,11 +118,155 @@ def analyze(
 
             report_id = cursor.fetchone()["id"]
 
+                        # Notify all active reviewers and admins
+            cursor.execute("""
+                INSERT INTO notifications (
+                    user_id,
+                    report_id,
+                    title,
+                    message
+                )
+                SELECT
+                    id,
+                    %s,
+                    'New report submitted',
+                    'A new report is waiting for review.'
+                FROM users
+                WHERE role IN ('reviewer', 'admin')
+                  AND is_active = TRUE
+                  AND id != %s
+            """, (report_id, current_user["id"]))
+
     return {
         "report_id": report_id,
         "created_at": created_at,
         **result
     }
+
+@app.delete("/reports/{report_id}")
+def delete_report(
+    report_id: int,
+    current_user: dict = Depends(require_roles("creator"))
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT id, review_status
+                FROM reports
+                WHERE id = %s
+                  AND creator_id = %s
+                FOR UPDATE
+            """, (report_id, current_user["id"]))
+
+            report = cursor.fetchone()
+
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found or you do not own this report."
+                )
+
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM review_history
+                    WHERE report_id = %s
+
+                    UNION ALL
+
+                    SELECT 1
+                    FROM issue_reviews
+                    WHERE report_id = %s
+                ) AS has_review_history
+            """, (report_id, report_id))
+
+            history = cursor.fetchone()
+
+            if history["has_review_history"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This report cannot be deleted because review history exists."
+                )
+
+            cursor.execute("""
+                DELETE FROM reports
+                WHERE id = %s
+                  AND creator_id = %s
+            """, (report_id, current_user["id"]))
+
+    return {
+        "message": "Report deleted successfully.",
+        "report_id": report_id
+    }
+
+
+@app.get("/notifications")
+def get_notifications(
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT
+                    id,
+                    report_id,
+                    title,
+                    message,
+                    is_read,
+                    created_at
+                FROM notifications
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                LIMIT 50
+            """, (current_user["id"],))
+
+            notifications = cursor.fetchall()
+
+    return {
+        "notifications": notifications
+    }
+
+
+@app.post("/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE notifications
+                SET is_read = TRUE
+                WHERE id = %s AND user_id = %s
+                RETURNING id
+            """, (notification_id, current_user["id"]))
+
+            notification = cursor.fetchone()
+
+            if notification is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Notification not found."
+                )
+
+    return {"message": "Notification marked as read."}
+
+
+@app.post("/notifications/read-all")
+def mark_all_notifications_read(
+    current_user: dict = Depends(get_current_user)
+):
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE notifications
+                SET is_read = TRUE
+                WHERE user_id = %s AND is_read = FALSE
+            """, (current_user["id"],))
+
+    return {"message": "All notifications marked as read."}
+
 
 @app.get("/reports")
 def get_reports(
@@ -174,11 +318,16 @@ def review_report(
     with get_connection() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id FROM reports WHERE id = %s",
+                "SELECT id, creator_id FROM reports WHERE id = %s",
                 (report_id,)
             )
 
             report = cursor.fetchone()
+            if report is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Report not found."
+                )
 
             if (
                 request.review_status in ("rejected", "request_changes")
@@ -217,6 +366,34 @@ def review_report(
                 request.review_status,
                 request.reviewer_comment
             ))
+                        # Notify the report creator about the review decision
+            if report["creator_id"] is not None:
+                decision_titles = {
+                    "approved": "Your report was approved",
+                    "rejected": "Your report was rejected",
+                    "request_changes": "Changes requested on your report"
+                }
+
+                decision_messages = {
+                    "approved": "Your report has been approved by the reviewer.",
+                    "rejected": "Your report was rejected. Check the reviewer comment.",
+                    "request_changes": "The reviewer has requested changes. Check the reviewer comment."
+                }
+
+                cursor.execute("""
+                    INSERT INTO notifications (
+                        user_id,
+                        report_id,
+                        title,
+                        message
+                    )
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    report["creator_id"],
+                    report_id,
+                    decision_titles[request.review_status],
+                    decision_messages[request.review_status]
+                ))
 
     return {
         "message": "Review decision saved successfully",

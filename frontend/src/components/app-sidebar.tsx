@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { getSubmissionsViaApi } from "@/lib/api";
-import type { Submission } from "@/lib/types";
+import {
+  getNotificationsViaApi,
+  markNotificationReadViaApi,
+  markAllNotificationsReadViaApi,
+  type NotificationItem,
+} from "@/lib/api";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -119,7 +123,9 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 
 function NotificationsMenu() {
   const { user } = useAuth();
-  const [reports, setReports] = useState<Submission[]>([]);
+  const navigate = useNavigate();
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -127,24 +133,21 @@ function NotificationsMenu() {
 
     async function loadNotifications() {
       try {
-        const data = await getSubmissionsViaApi();
+        const data = await getNotificationsViaApi();
 
         if (active) {
-          setReports(data);
+          setNotifications(data);
         }
       } catch (error) {
         console.error("Could not load notifications:", error);
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
 
     if (user) {
+      setLoading(true);
       void loadNotifications();
-    } else {
-      setLoading(false);
     }
 
     return () => {
@@ -152,12 +155,42 @@ function NotificationsMenu() {
     };
   }, [user]);
 
-  const notifications =
-    user?.role === "creator"
-      ? reports.filter((s) => s.reviewStatus !== "pending_review")
-      : reports.filter((s) => s.reviewStatus === "pending_review");
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const isReviewer = user?.role === "reviewer";
+  async function handleNotificationClick(notification: NotificationItem) {
+    try {
+      if (!notification.is_read) {
+        await markNotificationReadViaApi(notification.id);
+
+        setNotifications((current) =>
+          current.map((n) =>
+            n.id === notification.id ? { ...n, is_read: true } : n
+          )
+        );
+      }
+
+      if (notification.report_id !== null) {
+        navigate({
+          to: user?.role === "creator" ? "/reports/$id" : "/review/$id",
+          params: { id: String(notification.report_id) },
+        });
+      }
+    } catch (error) {
+      console.error("Could not open notification:", error);
+    }
+  }
+
+  async function handleMarkAllRead() {
+    try {
+      await markAllNotificationsReadViaApi();
+
+      setNotifications((current) =>
+        current.map((n) => ({ ...n, is_read: true }))
+      );
+    } catch (error) {
+      console.error("Could not mark notifications as read:", error);
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -167,16 +200,37 @@ function NotificationsMenu() {
           className="relative flex h-10 w-10 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors hover:bg-muted"
         >
           <Bell className="h-4.5 w-4.5" />
-          {notifications.length > 0 && (
+
+          {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-              {notifications.length}
+              {unreadCount}
             </span>
           )}
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-80 p-2">
+        <div className="flex items-center justify-between px-2 py-2">
+          <DropdownMenuLabel className="p-0">
+            Notifications
+            {unreadCount > 0 && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {unreadCount} unread
+              </span>
+            )}
+          </DropdownMenuLabel>
+
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleMarkAllRead()}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Mark all as read
+            </button>
+          )}
+        </div>
+
         <DropdownMenuSeparator />
 
         {loading ? (
@@ -184,35 +238,48 @@ function NotificationsMenu() {
             Loading notifications...
           </DropdownMenuItem>
         ) : notifications.length === 0 ? (
-          <DropdownMenuItem disabled>
-            No new notifications.
-          </DropdownMenuItem>
+          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+            <Bell className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm font-medium">You're all caught up!</p>
+            <p className="text-xs text-muted-foreground">
+              Your notifications will appear here.
+            </p>
+          </div>
         ) : (
-          notifications.slice(0, 5).map((s) => (
-            <DropdownMenuItem key={s.id} asChild>
-              <Link
-                to={isReviewer ? "/review/$id" : "/reports/$id"}
-                params={{ id: s.id }}
-                className="flex flex-col gap-0.5"
+          <div className="max-h-80 overflow-y-auto">
+            {notifications.map((notification) => (
+              <DropdownMenuItem
+                key={notification.id}
+                onSelect={() => void handleNotificationClick(notification)}
+                className={`mb-1 cursor-pointer items-start gap-3 rounded-lg p-3 ${
+                  !notification.is_read
+                    ? "bg-primary/5 focus:bg-primary/10"
+                    : "opacity-75"
+                }`}
               >
-                <span className="truncate text-sm font-medium">
-                  {isReviewer
-                    ? `Review waiting: ${s.title}`
-                    : `Your report: ${s.title}`}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isReviewer
-                    ? `${s.analysis.issues.length} issue${s.analysis.issues.length === 1 ? "" : "s"} detected`
-                    : `Status: ${s.reviewStatus.replace(/_/g, " ")}`}
-                </span>
-              </Link>
-            </DropdownMenuItem>
-          ))
+                <div className="mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
+                  {!notification.is_read && (
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    {notification.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {notification.message}
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+
 
 
 function Avatar() {
