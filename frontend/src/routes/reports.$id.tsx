@@ -64,6 +64,7 @@ const [submission, setSubmission] = useState<Submission | null>(null);
 const [loading, setLoading] = useState(true);
 const [isEditing, setIsEditing] = useState(false);
 const [editedContent, setEditedContent] = useState("");
+const [editedTitle, setEditedTitle] = useState("");
 const [isResubmitting, setIsResubmitting] = useState(false);
 const [error, setError] = useState("");
 const [copied, setCopied] = useState(false);
@@ -179,6 +180,11 @@ if (error) {
     }
   };
   const handleResubmit = async () => {
+  if (!editedTitle.trim()) {
+    toast.error("Please enter a content title.");
+    return;
+  }
+
   if (editedContent.trim().length < 20) {
     toast.error("Please enter at least 20 characters.");
     return;
@@ -187,12 +193,13 @@ if (error) {
   setIsResubmitting(true);
 
   try {
-    await resubmitReportViaApi(id, editedContent);
+    await resubmitReportViaApi(id, editedTitle.trim(), editedContent);
 
     const updatedSubmission = await getSubmissionViaApi(id);
 
     setSubmission(updatedSubmission);
     setIsEditing(false);
+    setEditedTitle("");
     setEditedContent("");
 
     toast.success("Report resubmitted successfully!");
@@ -258,9 +265,10 @@ if (error) {
         {!isEditing && (
           <Button
             onClick={() => {
-              setEditedContent(submission.content);
-              setIsEditing(true);
-            }}
+  setEditedTitle(submission.title || "");
+  setEditedContent(submission.content);
+  setIsEditing(true);
+}}
           >
             Edit & Resubmit
           </Button>
@@ -281,13 +289,33 @@ if (error) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <textarea
+  <div className="space-y-2">
+    <label htmlFor="edited-title" className="text-sm font-medium">
+      Content title
+    </label>
+    <input
+      id="edited-title"
+      type="text"
+      value={editedTitle}
+      onChange={(e) => setEditedTitle(e.target.value)}
+      className="w-full rounded-lg border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+      placeholder="Enter content title..."
+    />
+  </div>
+
+  <div className="space-y-2">
+    <label htmlFor="edited-content" className="text-sm font-medium">
+      Content
+    </label>
+    <textarea
+      id="edited-content"
           value={editedContent}
           onChange={(e) => setEditedContent(e.target.value)}
           rows={10}
           className="w-full resize-y rounded-lg border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary"
           placeholder="Make the required changes to your content..."
         />
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Minimum 20 characters required.
@@ -296,17 +324,21 @@ if (error) {
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => void handleResubmit()}
-            disabled={isResubmitting || editedContent.trim().length < 20}
-          >
+disabled={
+  isResubmitting ||
+  !editedTitle.trim() ||
+  editedContent.trim().length < 20
+}          >
             {isResubmitting ? "Sending..." : "Send for Review"}
           </Button>
 
           <Button
             variant="outline"
             onClick={() => {
-              setIsEditing(false);
-              setEditedContent("");
-            }}
+  setIsEditing(false);
+  setEditedTitle("");
+  setEditedContent("");
+}}
             disabled={isResubmitting}
           >
             Cancel

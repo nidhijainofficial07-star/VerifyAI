@@ -506,7 +506,7 @@ function mapBackendReportToSubmission(
 
   return {
     id: String(report.report_id),
-    title: `${report.brand} — ${report.content.slice(0, 45)}${report.content.length > 45 ? "..." : ""}`,
+    title: `${report.brand} — ${report.title?.trim() || "Untitled content"}`,
     contentType: "Advertisement",
     content: report.content,
     createdAt: report.created_at,
@@ -550,6 +550,7 @@ export async function getSubmissionsViaApi(): Promise<Submission[]> {
 
 export async function resubmitReportViaApi(
   reportId: string,
+  title: string,
   content: string
 ): Promise<void> {
   const response = await authenticatedFetch(
@@ -557,7 +558,10 @@ export async function resubmitReportViaApi(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        title,
+        content,
+      }),
     }
   );
 
@@ -584,7 +588,10 @@ export async function analyzeContentViaApi(
     response = await authenticatedFetch("/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: request.content }),
+      body: JSON.stringify({
+  title: request.title,
+  content: request.content,
+}),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Please log in to continue.") {

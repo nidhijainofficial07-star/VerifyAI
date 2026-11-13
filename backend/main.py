@@ -52,6 +52,7 @@ app.add_middleware(
 
 
 class ContentRequest(BaseModel):
+    title: str
     content: str
 
 
@@ -101,6 +102,7 @@ def analyze(
             cursor.execute("""
                 INSERT INTO reports (
                     brand,
+                    title,
                     content,
                     result_json,
                     created_at,
@@ -110,6 +112,7 @@ def analyze(
                 RETURNING id
             """, (
                 result["brand"],
+                request.title,
                 request.content,
                 json.dumps(result),
                 created_at,
@@ -187,6 +190,7 @@ def resubmit_report(
             cursor.execute("""
                 UPDATE reports
                 SET brand = %s,
+                    title = %s,
                     content = %s,
                     result_json = %s,
                     review_status = 'pending',
@@ -196,6 +200,7 @@ def resubmit_report(
                 WHERE id = %s
             """, (
                 result["brand"],
+                request.title,
                 request.content,
                 json.dumps(result),
                 report_id
@@ -381,6 +386,7 @@ def get_reports(
         reports.append({
             "report_id": row["id"],
             "brand": row["brand"],
+            "title": row["title"],
             "content": row["content"],
             "result": json.loads(row["result_json"]),
             "created_at": row["created_at"],
