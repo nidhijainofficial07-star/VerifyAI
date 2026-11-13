@@ -189,7 +189,7 @@ def resubmit_report(
                 SET brand = %s,
                     content = %s,
                     result_json = %s,
-                    review_status = 'pending_review',
+                    review_status = 'pending',
                     reviewer_comment = '',
                     reviewer_id = NULL,
                     reviewed_at = NULL
