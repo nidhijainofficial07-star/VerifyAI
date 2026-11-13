@@ -108,7 +108,7 @@ def analyze(
                     created_at,
                     creator_id
                 )
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (%s, %s,%s, %s, %s, %s)
                 RETURNING id
             """, (
                 result["brand"],
