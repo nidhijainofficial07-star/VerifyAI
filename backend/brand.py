@@ -43,6 +43,26 @@ def get_brand_profile():
 
             guidelines = cursor.fetchall()
 
+
+            cursor.execute("""
+                SELECT
+                    id,
+                    promotion_name,
+                    approved_price,
+                    approved_discount_percentage,
+                    currency,
+                    valid_from,
+                    valid_until,
+                    active
+                FROM brand_promotions
+                WHERE brand_id = %s
+                  AND product_id = %s
+                ORDER BY valid_from DESC
+            """, (brand["brand_id"], product["id"]))
+
+
+            promotion_rows = cursor.fetchall()
+
             cursor.execute("""
                 SELECT preferred, restricted, alternative,
                        source_title, version, id
@@ -61,7 +81,27 @@ def get_brand_profile():
 
     currency = product["currency"]
     currency_symbol = "₹" if currency == "INR" else currency
+    approved_promotions = []
 
+    for promotion in promotion_rows:
+        approved_promotions.append({
+            "promotion_id": promotion["id"],
+            "promotion_name": promotion["promotion_name"],
+            "approved_price": (
+                float(promotion["approved_price"])
+                if promotion["approved_price"] is not None
+                else None
+            ),
+            "approved_discount_percentage": (
+                float(promotion["approved_discount_percentage"])
+                if promotion["approved_discount_percentage"] is not None
+                else None
+            ),
+            "currency": promotion["currency"],
+            "valid_from": promotion["valid_from"].isoformat(),
+            "valid_until": promotion["valid_until"].isoformat(),
+            "active": promotion["active"]
+        })
     product_reference = {
         "evidence_id": f"brand_products:{product['id']}",
         "product_id": product["id"],
@@ -139,7 +179,7 @@ def get_brand_profile():
 
     return {
         "brand_id": brand["brand_id"],
-        "brand_name": brand["brand_name"],
+        "brand": brand["brand_name"],
 
         "approved_facts": {
             "product_name": product_name,
@@ -148,6 +188,7 @@ def get_brand_profile():
             "specifications": list(product["specifications"] or []),
             "description": product["approved_description"]
         },
+        "approved_promotions": approved_promotions,
 
         "approved_terminology": approved_terminology,
 

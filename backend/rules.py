@@ -1,7 +1,11 @@
 
 import re
 from brand import get_brand_profile
-
+from input_quality import analyze_input_quality
+from price_analyzer import analyze_prices
+from claim_analyzer import analyze_evidence_claims
+from risk_scoring import calculate_risk_score
+from issue_deduplicator import deduplicate_issues
 
 def normalize_claim_text(text):
     text = text.lower()
@@ -31,6 +35,11 @@ def analyze_content(content: str):
     guidelines = brand.get("guidelines", [])
 
     issues = []
+
+# Step 1: Check input quality
+    quality_issues = analyze_input_quality(content)
+    issues.extend(quality_issues)
+
     normalized_content = normalize_claim_text(content)
 
     reported_guidelines = set()
@@ -127,46 +136,18 @@ def analyze_content(content: str):
             evidence_reference=references.get("product_name", {})
         )
 
-    # 2. Price verification
+    # 2. Smart price verification
+    price_issues = analyze_prices(
+    content=content,
+    approved_price=facts.get("price"),
+    currency=facts.get("currency", "INR"),
+    approved_promotions=brand.get("approved_promotions", [])
+)
 
-    approved_price = float(facts["price"])
-    currency = facts["currency"]
-
-    if currency == "INR":
-
-        prices = re.findall(
-            r"₹\s*([\d,]+(?:\.\d{1,2})?)",
-            content
-        )
-
-        for price_text in prices:
-
-            mentioned_price = float(
-                price_text.replace(",", "")
-            )
-
-            if mentioned_price != approved_price:
-
-                approved_display = (
-                    f"{approved_price:,.2f}".rstrip("0").rstrip(".")
-                )
-
-                mentioned_display = (
-                    f"{mentioned_price:,.2f}".rstrip("0").rstrip(".")
-                )
-
-                add_issue(
-                    issue_type="price_mismatch",
-                    severity="high",
-                    status="confirmed_mismatch",
-                    message=(
-                        f"Content mentions ₹{mentioned_display}, "
-                        f"but approved price is ₹{approved_display}."
-                    ),
-                    evidence=f"Approved price: ₹{approved_display}",
-                    suggestion=f"Replace with ₹{approved_display}.",
-                    evidence_reference=references.get("price", {})
-                )
+    issues.extend(price_issues)
+    # 2.5 Evidence-based claim detection
+    claim_issues = analyze_evidence_claims(content)
+    issues.extend(claim_issues)
 
     # 3. Restricted claims and terminology
 
@@ -226,6 +207,7 @@ def analyze_content(content: str):
 
     # 4. Numerical productivity claims
 
+    
     productivity_pattern = (
         # Example: improves productivity by 30%
         r"\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*|deliver\w*|"
@@ -244,6 +226,7 @@ def analyze_content(content: str):
         r".{0,30}\bproductivity\b"
         r".{0,30}\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*)\b"
     )
+
 
     if re.search(productivity_pattern, normalized_content):
 
@@ -272,12 +255,14 @@ def analyze_content(content: str):
 
     # 5. Unsupported performance promises
 
+    
     performance_patterns = [
         r"\bguarante\w*.{0,50}\bperformance\b",
         r"\bperformance\b.{0,50}\bguarante\w*",
         r"\b(?:exceptional|outstanding|superior|unmatched|unparalleled)"
         r"\s+performance\b"
     ]
+
 
     performance_claim_found = any(
         re.search(pattern, normalized_content)
@@ -311,11 +296,18 @@ def analyze_content(content: str):
 
     # 6. Final analysis result
 
+       # Remove duplicate findings before calculating risk
+    issues = deduplicate_issues(issues)
+
+# Calculate risk using unique findings
+    risk = calculate_risk_score(issues)
+
     return {
-        "brand": brand["brand_name"],
+        "brand": brand["brand"],
         "total_issues": len(issues),
         "issues": issues,
-        "overall_status": (
-            "review_required" if issues else "no_issues_detected"
-        )
+        "overall_status": "review_required" if issues else "no_issues_detected",
+        "risk_score": risk["risk_score"],
+        "risk_level": risk["risk_level"],
+        "scoring_method": risk["scoring_method"]
     }
