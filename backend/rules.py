@@ -205,28 +205,33 @@ def analyze_content(content: str):
             evidence_reference=reference
         )
 
+
     # 4. Numerical productivity claims
 
-    
     productivity_pattern = (
-        # Example: improves productivity by 30%
+        # Example: improves productivity by 30 percent
         r"\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*|deliver\w*|"
         r"offer\w*|provide\w*)\b"
         r".{0,60}\bproductivity\b"
         r".{0,40}\b(?:by|of)\s+\d+(?:\.\d+)?\s+percent\b"
 
-        # Example: 30% productivity improvement
+        # Example: 30 percent productivity improvement
         r"|\b\d+(?:\.\d+)?\s+percent\b"
         r".{0,30}\bproductivity\b"
         r".{0,30}\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*)\b"
 
-        # Example: delivers 30% productivity improvement
+        # Example: delivers 30 percent productivity improvement
         r"|\b(?:deliver\w*|offer\w*|provide\w*)\b"
         r".{0,30}\b\d+(?:\.\d+)?\s+percent\b"
         r".{0,30}\bproductivity\b"
         r".{0,30}\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*)\b"
-    )
 
+        # Example: guarantees 100 percent improvement in productivity
+        r"|\b(?:guarante\w*|promise\w*|ensure\w*)\b"
+        r".{0,50}\b\d+(?:\.\d+)?\s+percent\b"
+        r".{0,40}\b(?:improv\w*|boost\w*|increas\w*|enhanc\w*)\b"
+        r".{0,30}\bproductivity\b"
+    )
 
     if re.search(productivity_pattern, normalized_content):
 
