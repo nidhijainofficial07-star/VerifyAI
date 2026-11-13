@@ -6,6 +6,7 @@ import {
   getSubmissionViaApi,
   getReviewHistoryViaApi,
   getIssueReviewsViaApi,
+  resubmitReportViaApi,
 } from "@/lib/api";
 import type {
   Submission,
@@ -55,11 +56,15 @@ export const Route = createFileRoute("/reports/$id")({
 
 function ReportDetailPage() {
   const { id } = useParams({ from: Route.id });
+  const { user } = useAuth();
 const [reviewHistory, setReviewHistory] = useState<BackendReviewHistory[]>([]);
 const [issueReviews, setIssueReviews] = useState<BackendIssueReview[]>([]);
 const [historyLoaded, setHistoryLoaded] = useState(false);
 const [submission, setSubmission] = useState<Submission | null>(null);
 const [loading, setLoading] = useState(true);
+const [isEditing, setIsEditing] = useState(false);
+const [editedContent, setEditedContent] = useState("");
+const [isResubmitting, setIsResubmitting] = useState(false);
 const [error, setError] = useState("");
 const [copied, setCopied] = useState(false);
 
@@ -160,7 +165,6 @@ if (error) {
       </div>
     );
   }
-  const { user } = useAuth();
   const a = submission.analysis;
   const pendingIssues = a.issues.filter((i) => i.resolution === "pending").length;
   const copyCorrected = async () => {
@@ -174,6 +178,34 @@ if (error) {
       toast.error("Could not copy");
     }
   };
+  const handleResubmit = async () => {
+  if (editedContent.trim().length < 20) {
+    toast.error("Please enter at least 20 characters.");
+    return;
+  }
+
+  setIsResubmitting(true);
+
+  try {
+    await resubmitReportViaApi(id, editedContent);
+
+    const updatedSubmission = await getSubmissionViaApi(id);
+
+    setSubmission(updatedSubmission);
+    setIsEditing(false);
+    setEditedContent("");
+
+    toast.success("Report resubmitted successfully!");
+  } catch (err) {
+    toast.error(
+      err instanceof Error
+        ? err.message
+        : "Could not resubmit report."
+    );
+  } finally {
+    setIsResubmitting(false);
+  }
+};
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
@@ -205,7 +237,84 @@ if (error) {
           <ReviewBadge status={submission.reviewStatus} />
           <Badge variant="outline">Risk level: {riskLevel(a.counts)}</Badge>
         </div>
+        {user?.role === "creator" &&
+  submission.reviewStatus === "changes_requested" && (
+    <Card className="mt-4 border-warning/50">
+      <CardHeader>
+        <CardTitle className="text-base">
+          Changes Requested by Reviewer
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Please review the feedback below and update your content.
+        </p>
+
+        <p className="rounded-lg border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+          {submission.review?.comment || "No reviewer comment provided."}
+        </p>
+
+        {!isEditing && (
+          <Button
+            onClick={() => {
+              setEditedContent(submission.content);
+              setIsEditing(true);
+            }}
+          >
+            Edit & Resubmit
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )}
       </div>
+
+      {user?.role === "creator" &&
+  submission.reviewStatus === "changes_requested" &&
+  isEditing && (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          Edit Your Content
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <textarea
+          value={editedContent}
+          onChange={(e) => setEditedContent(e.target.value)}
+          rows={10}
+          className="w-full resize-y rounded-lg border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+          placeholder="Make the required changes to your content..."
+        />
+
+        <p className="text-xs text-muted-foreground">
+          Minimum 20 characters required.
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => void handleResubmit()}
+            disabled={isResubmitting || editedContent.trim().length < 20}
+          >
+            {isResubmitting ? "Sending..." : "Send for Review"}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsEditing(false);
+              setEditedContent("");
+            }}
+            disabled={isResubmitting}
+          >
+            Cancel
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )}
 
       {/* Overall compliance summary */}
       <Card>
