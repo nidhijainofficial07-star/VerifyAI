@@ -172,6 +172,7 @@ export interface BackendAnalysis {
 export interface BackendReport {
   report_id: number;
   brand: string;
+  title: string | null;
   content: string;
   result: BackendAnalysis;
   created_at: string;
