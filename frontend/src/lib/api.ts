@@ -615,6 +615,61 @@ export async function getReportsViaApi(): Promise<BackendReport[]> {
 }
 
 
+export interface NotificationItem {
+  id: number;
+  report_id: number | null;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+interface NotificationsResponse {
+  notifications: NotificationItem[];
+}
+
+export async function getNotificationsViaApi(): Promise<NotificationItem[]> {
+  const response = await authenticatedFetch("/notifications");
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not load notifications.")
+    );
+  }
+
+  const data: NotificationsResponse = await response.json();
+  return data.notifications;
+}
+
+export async function markNotificationReadViaApi(
+  notificationId: number
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/notifications/${notificationId}/read`,
+    { method: "POST" }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not mark notification as read.")
+    );
+  }
+}
+
+export async function markAllNotificationsReadViaApi(): Promise<void> {
+  const response = await authenticatedFetch("/notifications/read-all", {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not mark all notifications as read.")
+    );
+  }
+}
+
+
+
 export async function deleteReportViaApi(
   reportId: string
 ): Promise<void> {
