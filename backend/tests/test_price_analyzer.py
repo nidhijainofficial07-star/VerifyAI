@@ -704,6 +704,35 @@ class TestPriceAnalyzer(unittest.TestCase):
 
         self.assertEqual(len(expired), 1)
 
+    def test_costs_and_today_discount_sentence(self):
+        now = datetime.now(timezone.utc)
+
+        promotion = {
+            "promotion_name": "Test Offer",
+            "approved_price": 4000,
+            "approved_discount_percentage": 20,
+            "valid_from": (now - timedelta(days=1)).isoformat(),
+            "valid_until": (now + timedelta(days=7)).isoformat(),
+            "active": True
+        }
+
+        result = analyze_prices(
+            "Our product costs ₹5,000, but today it is available for ₹4,000 with 20% off.",
+            approved_price=5000,
+            approved_promotions=[promotion]
+        )
+
+        errors = [
+            issue for issue in result
+            if issue["type"] in (
+                "discount_needs_verification",
+                "discount_mismatch",
+                "promotion_discount_mismatch",
+                "price_mismatch"
+            )
+        ]
+        self.assertEqual(len(errors), 0)
+
     def test_future_promotion(self):
         now = datetime.now(timezone.utc)
 
