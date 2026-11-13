@@ -547,6 +547,26 @@ export async function getSubmissionsViaApi(): Promise<Submission[]> {
 
   return reports.map(mapBackendReportToSubmission);
 }
+
+export async function resubmitReportViaApi(
+  reportId: string,
+  content: string
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `/reports/${encodeURIComponent(reportId)}/resubmit`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Could not resubmit report.")
+    );
+  }
+}
 // CONTENT ANALYSIS
 
 export async function analyzeContentViaApi(
